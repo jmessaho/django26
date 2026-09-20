@@ -1,0 +1,40 @@
+name: Déploiement Django
+
+on:
+  push:
+    branches:
+      - master  # Changez en 'main' si votre branche principale s'appelle main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Déploiement sur le VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.OPENSSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            # 1. Naviguer vers le dossier de l'application
+            cd /var/www/jmessaho.net
+            
+            # 2. Récupérer la dernière version du code
+            git pull origin master
+            
+            # 3. Activer l'environnement virtuel Python
+            source venv/bin/activate
+            
+            # 4. Installer les nouvelles dépendances (si requirements.txt a changé)
+            # pip install -r requirements.txt
+            
+            # 5. Appliquer les migrations de la base de données
+            python3 manage.py migrate
+            
+            # 6. Rassembler les fichiers statiques (CSS/HTML)
+            python3 manage.py collectstatic --noinput
+            
+            # 7. Redémarrer Gunicorn en douceur
+            sudo systemctl restart gunicorn

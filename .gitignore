@@ -1,0 +1,14 @@
+# Environnements virtuels
+venv/
+env/
+.venv/
+
+# Base de données locale
+db.sqlite3
+
+# Fichiers compilés Python
+__pycache__/
+*.pyc
+
+# Fichiers de configuration et secrets
+.env
