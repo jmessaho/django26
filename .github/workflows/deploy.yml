@@ -1,14 +1,16 @@
-name: Déploiement VPS
+name: Déploiement Django vers VPS
+
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Exécution des commandes SSH
-        uses: appleboy/ssh-action@master
+      - name: Connexion SSH et exécution des commandes
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
@@ -16,10 +18,8 @@ jobs:
           script: |
             cd /var/www/html
             git pull origin main
-            
-            # Exemples d'étapes de mise à jour (à adapter) :
             source venv/bin/activate
-            # pip install -r requirements.txt
+            #pip install -r requirements.txt
             python manage.py migrate
             python manage.py collectstatic --noinput
             sudo systemctl restart gunicorn
