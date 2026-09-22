@@ -7,12 +7,6 @@ h1{
 body{
     background: lightyellow;
 }
-.boutons-container {
-    display: flex;          /* Active le mode Flexbox */
-    gap: 15px;              /* Espace automatique entre les boutons */
-    flex-wrap: wrap;        /* Permet aux boutons de passer à la ligne sur les petits écrans */
-}
-
 .btn {
     padding: 10px 20px;
     background-color: #3498db;
@@ -26,6 +20,11 @@ body{
 
 .btn:hover {
     background-color: #2980b9;
+}
+.boutons-container {
+    display: flex;
+    justify-content: center; /* Centre les boutons horizontalement */
+    gap: 15px;
 }
 footer {
             background-color: #f1f1f1;
