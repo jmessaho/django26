@@ -54,8 +54,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'website26.urls'
 STATIC_URL = '/static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE='whitenoise.storage.CompressedManifestStaticFilesStop'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+#STATICFILES_STORAGE='whitenoise.storage.CompressedManifestStaticFilesStop'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -107,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr-fr'
 
 TIME_ZONE = 'UTC'
 
