@@ -4,13 +4,10 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/wb" />
     </content>
-    <orderEntry type="jdk" jdkName="~/Documents/web26/wb" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="SSH (sftp://root@149.100.70.249:22/root/.virtualenvs/webdev26/bin/python)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
-  <component name="PackageRequirementsSettings" />
   <component name="PyDocumentationSettings">
     <option name="format" value="GOOGLE" />
   </component>
-  <component name="ReSTService" />
-  <component name="TestRunnerService" />
 </module>
