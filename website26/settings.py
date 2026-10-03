@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-rv588!x!o%5^=b2#4(k#pvgpgn$&l*4az_ure*j$cgxe&4^hw4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['jmessaho.net', 'https://jmessaho.net', 'www.jmessaho.net','192.162.68.45']
+ALLOWED_HOSTS = ['jmessaho.net', 'https://jmessaho.net', 'www.jmessaho.net','149.100.70.249']
 
 
 # Application definition
