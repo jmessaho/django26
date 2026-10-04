@@ -4,5 +4,5 @@ from django.utils import timezone
 def index(request):
     hr1 = timezone.now()
     a= {'myname': 'J. Messaho',
-        'now' : 'hr1'}
+        'now' : hr1}
     return render(request, 'index.html', a)
