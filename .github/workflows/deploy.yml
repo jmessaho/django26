@@ -17,6 +17,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VDS_PORT }}
           script: |
             cd /var/www/jmessaho.net/django26/
             git config pull.rebase false
