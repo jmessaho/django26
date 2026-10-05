@@ -16,7 +16,7 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.KEY_VDS }}
           port: ${{ secrets.VDS_PORT }}
           script: |
             cd /var/www/jmessaho.net/django26/
