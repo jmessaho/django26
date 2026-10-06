@@ -1,29 +1,53 @@
-name: Deploy to VDS
+name: Deploy Django to VDS
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Executing remote ssh commands using ssh key
-        uses: appleboy/ssh-action@v1.0.3
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY_VDS }}
-          port: ${{ secrets.VDS_PORT }}
           script: |
-            cd /var/www/jmessaho.net/django26/
-            git config pull.rebase false
-            git pull origin main
+            set -e
+
+            echo "=== Déploiement django26 ==="
+
+            cd /var/www/html/django26
+
+            echo "=== Récupération du code ==="
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "=== Activation du virtualenv ==="
             source venv/bin/activate
+
+            echo "=== Installation des dépendances ==="
+            pip install --upgrade pip
             pip install -r requirements.txt
+
+            echo "=== Vérification Django ==="
+            python3 manage.py check
+
+            echo "=== Migrations ==="
             python3 manage.py migrate --noinput
+
+            echo "=== Fichiers statiques ==="
             python3 manage.py collectstatic --noinput
+
+            echo "=== Redémarrage Gunicorn ==="
             sudo systemctl restart gunicorn
+
+            echo "=== Vérification du service ==="
+            sudo systemctl is-active gunicorn
+
+            echo "=== Déploiement terminé ==="
+```
