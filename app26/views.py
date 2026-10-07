@@ -7,4 +7,4 @@ def index(request):
         'now' : hr1}
     return render(request, 'index.html', a)
 def formations(request):
-    return render(request, 'formations.html', a)
+    return render(request, 'formations.html')
