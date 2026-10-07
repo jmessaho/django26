@@ -1,4 +1,4 @@
-name: Deploy Django to VDS
+name: Deploy django to VPS
 
 on:
   push:
@@ -19,35 +19,19 @@ jobs:
           script: |
             set -e
 
-            echo "=== Déploiement django26 ==="
+            cd /var/www/django26
 
-            cd /var/www/html/django26
-
-            echo "=== Récupération du code ==="
             git fetch origin
             git reset --hard origin/main
 
-            echo "=== Activation du virtualenv ==="
             source venv/bin/activate
 
-            echo "=== Installation des dépendances ==="
-            pip install --upgrade pip
             pip install -r requirements.txt
 
-            echo "=== Vérification Django ==="
-            python3 manage.py check
+            python manage.py check
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
 
-            echo "=== Migrations ==="
-            python3 manage.py migrate --noinput
+            sudo systemctl restart django26
 
-            echo "=== Fichiers statiques ==="
-            python3 manage.py collectstatic --noinput
-
-            echo "=== Redémarrage Gunicorn ==="
-            sudo systemctl restart gunicorn
-
-            echo "=== Vérification du service ==="
-            sudo systemctl is-active gunicorn
-
-            echo "=== Déploiement terminé ==="
-```
+            sudo systemctl is-active django26
