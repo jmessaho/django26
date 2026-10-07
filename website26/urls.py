@@ -21,5 +21,5 @@ from app26.views import index, formations
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', index),
-    path('/formations/', formations)
+    path('formations/', formations)
 ]
