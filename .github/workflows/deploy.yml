@@ -1,4 +1,4 @@
-name: Deploy django to VPS
+name: Deploy Django
 
 on:
   push:
@@ -7,31 +7,38 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
 
     steps:
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY_VDS }}
-          script: |
-            set -e
+      - name: Deploy Django
+        run: |
+          set -e
 
-            cd /var/www/django26
+          cd /var/www/django26
 
-            git fetch origin
-            git reset --hard origin/main
+          echo "=== Mise à jour Git ==="
+          git fetch origin
+          git reset --hard origin/main
 
-            source venv/bin/activate
+          echo "=== Activation environnement Python ==="
+          source venv/bin/activate
 
-            pip install -r requirements.txt
+          echo "=== Installation dépendances ==="
+          pip install -r requirements.txt
 
-            python manage.py check
-            python manage.py migrate --noinput
-            python manage.py collectstatic --noinput
+          echo "=== Vérification Django ==="
+          python manage.py check
 
-            sudo systemctl restart django26
+          echo "=== Migrations ==="
+          python manage.py migrate --noinput
 
-            sudo systemctl is-active django26
+          echo "=== Fichiers statiques ==="
+          python manage.py collectstatic --noinput
+
+          echo "=== Redémarrage Gunicorn ==="
+          sudo systemctl restart django26
+
+          echo "=== Vérification Gunicorn ==="
+          sudo systemctl is-active django26
+
+          echo "=== Déploiement terminé ==="
