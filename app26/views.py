@@ -8,3 +8,5 @@ def index(request):
     return render(request, 'index.html', a)
 def formations(request):
     return render(request, 'formations.html')
+def recherches(request):
+    return render(request, 'recherches.html')
