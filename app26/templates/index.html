@@ -1,24 +1,192 @@
-{% load static %}
-<html lang="fr" class="dark">
+<!DOCTYPE html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="{% static '/css/styles.css' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-    <title>Prof J. Messaho</title>
+    <title>{% block title %}Mathématiques{% endblock %}</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+        }
+
+        /* Barre horizontale */
+        .navbar {
+            width: 100%;
+            background: #172554;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            min-height: 65px;
+        }
+
+        .logo {
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .menu {
+            display: flex;
+            list-style: none;
+            gap: 5px;
+        }
+
+        .menu a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 22px 16px;
+            transition: 0.3s;
+        }
+
+        .menu a:hover {
+            background: #2563eb;
+        }
+
+        .menu a.active {
+            background: #2563eb;
+        }
+
+        /* Bouton mobile */
+        .menu-button {
+            display: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        /* Contenu */
+        main {
+            padding: 40px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+
+            .navbar {
+                flex-wrap: wrap;
+                padding: 0 20px;
+            }
+
+            .menu-button {
+                display: block;
+            }
+
+            .menu {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .menu.show {
+                display: flex;
+            }
+
+            .menu a {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
+
 <body>
-<p> Aujourd'hui {{ now }}
-<h1>
-    Bienvenue sur la plateforme éducative de Mr. {{ myname }}.
-</h1>
-<h3>
-    Bienvenue sur notre espace dédié aux mathématiques
-Comprendre, explorer et apprendre les mathématiques autrement.
-Cette plateforme a été conçue pour accompagner les élèves, les étudiants et les enseignants dans l’apprentissage et l’enseignement des mathématiques à travers une approche interactive, progressive et numérique.
-Vous y trouverez des ressources pédagogiques, des exercices, des outils de calcul et des applications permettant de mieux comprendre les concepts mathématiques et de développer votre raisonnement.
-Notre objectif est de rendre les mathématiques plus accessibles, plus intuitives et plus interactives, en mettant les technologies numériques au service de l’apprentissage.
-Explorez, expérimentez et progressez à votre rythme.
-</h3>
+
+<nav class="navbar">
+
+    <a href="/" class="logo">
+        Mathématiques
+    </a>
+
+    <div class="menu-button" id="menuButton">
+        ☰
+    </div>
+
+    <ul class="menu" id="menu"></ul>
+
+</nav>
+
+<main>
+    {% block content %}
+    {% endblock %}
+</main>
+
+
+<script>
+    /*
+     * Menus du site
+     */
+    const menus = [
+        {
+            name: "Accueil",
+            url: "/"
+        },
+        {
+            name: "Cours",
+            url: "/cours/"
+        },
+        {
+            name: "Exercices",
+            url: "/exercices/"
+        },
+        {
+            name: "Applications",
+            url: "/applications/"
+        },
+        {
+            name: "À propos",
+            url: "/about/"
+        },
+        {
+            name: "Contact",
+            url: "/contact/"
+        }
+    ];
+
+
+    /*
+     * Création automatique du menu
+     */
+    const menu = document.getElementById("menu");
+
+    menus.forEach(item => {
+
+        const li = document.createElement("li");
+
+        const a = document.createElement("a");
+
+        a.textContent = item.name;
+        a.href = item.url;
+
+        // Menu actif
+        if (window.location.pathname === item.url) {
+            a.classList.add("active");
+        }
+
+        li.appendChild(a);
+        menu.appendChild(li);
+    });
+
+
+    /*
+     * Menu mobile
+     */
+    const menuButton = document.getElementById("menuButton");
+
+    menuButton.addEventListener("click", () => {
+        menu.classList.toggle("show");
+    });
+</script>
+
 </body>
 </html>
