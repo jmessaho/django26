@@ -3,139 +3,67 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Éditeur LaTeX</title>
+    <title>LaTeX et Python</title>
 
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f5f7fa;
-            margin: 0;
-            padding: 40px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-
-        h1 {
-            color: #172554;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
         }
 
         textarea {
             width: 100%;
-            min-height: 150px;
-            font-size: 18px;
-            padding: 15px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            resize: vertical;
+            height: 350px;
+            font-family: monospace;
+            font-size: 16px;
         }
 
-        .result {
-            margin-top: 30px;
-            padding: 30px;
-            min-height: 100px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #fafafa;
-            font-size: 24px;
-            text-align: center;
-        }
-
-        .example {
-            margin-top: 20px;
-            color: #555;
+        button {
+            margin-top: 15px;
+            padding: 12px 25px;
+            font-size: 16px;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
 
-<div class="container">
+<h1>Éditeur LaTeX</h1>
 
-    <h1>Éditeur de formules mathématiques</h1>
+<form method="post">
 
-    <p>
-        Écrivez votre formule en LaTeX :
-    </p>
+    {% csrf_token %}
 
-    <textarea id="latexInput">
-\frac{x^2+1}{x-1}
-    </textarea>
+    <textarea name="latex">\documentclass{article}
 
-    <div class="result" id="result"></div>
+\usepackage{amsmath}
 
-    <div class="example">
-        <strong>Exemples :</strong>
+\begin{document}
 
-        <p>
-            Dérivée :
-            <code>\frac{d}{dx}x^n = nx^{n-1}</code>
-        </p>
+\section*{Exemple}
 
-        <p>
-            Intégrale :
-            <code>\int_0^1 x^2\,dx = \frac{1}{3}</code>
-        </p>
+Calculons :
 
-        <p>
-            Équation :
-            <code>x^2 - 5x + 6 = 0</code>
-        </p>
-    </div>
+\[
+\int_0^1 x^2\,dx = \frac{1}{3}
+\]
 
-</div>
+\[
+(a+b)^2=a^2+2ab+b^2
+\]
 
+\end{document}</textarea>
 
-<!-- MathJax -->
-<script>
-    window.MathJax = {
-        tex: {
-            inlineMath: [['$', '$'], ['\\(', '\\)']],
-            displayMath: [['$$', '$$'], ['\\[', '\\]']]
-        }
-    };
-</script>
+    <br>
 
-<script async
-    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
-</script>
+    <button type="submit">
+        Générer le PDF
+    </button>
 
-
-<script>
-
-    const input = document.getElementById("latexInput");
-    const result = document.getElementById("result");
-
-
-    function renderMath() {
-
-        const latex = input.value;
-
-        result.innerHTML = "\\[" + latex + "\\]";
-
-        if (window.MathJax) {
-            MathJax.typesetPromise([result]);
-        }
-    }
-
-
-    input.addEventListener("input", renderMath);
-
-
-    // Affichage initial
-    window.addEventListener("load", renderMath);
-
-</script>
+</form>
 
 </body>
-
 </html>
