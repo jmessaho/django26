@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Calculateur mathématique</title>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+
+    <script async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+        }
+
+        h1 {
+            color: #172554;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            box-sizing: border-box;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .resultat {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .erreur {
+            margin-top: 20px;
+            color: red;
+        }
+
+        .latex {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f5f9;
+            font-family: monospace;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Calculateur mathématique</h1>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <input
+            type="text"
+            name="expression"
+            placeholder="Exemple : (x**2 - 1)/(x - 1)"
+            value="{{ request.POST.expression }}"
+        >
+
+        <button type="submit">
+            Calculer
+        </button>
+
+    </form>
+
+
+    {% if erreur %}
+
+        <div class="erreur">
+            {{ erreur }}
+        </div>
+
+    {% endif %}
+
+
+    {% if resultat %}
+
+        <div class="resultat">
+
+            <h2>Résultat</h2>
+
+            <p>
+                {{ resultat }}
+            </p>
+
+            <h2>Formule mathématique</h2>
+
+            <div>
+                \[
+                {{ resultat_latex }}
+                \]
+            </div>
+
+
+            <h2>Code LaTeX</h2>
+
+            <div class="latex">
+                {{ resultat_latex }}
+            </div>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>

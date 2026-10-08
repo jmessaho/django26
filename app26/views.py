@@ -1,7 +1,7 @@
 import os
 import subprocess
 import tempfile
-
+from sympy import sympify, latex as sympy_latex
 from django.http import FileResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -56,3 +56,24 @@ def latex_pdf(request):
                 return response
 
     return render(request, "latex.html")
+def calcul(request):
+    resultat = ""
+    resultat_latex = ""
+    erreur = ""
+
+    if request.method == "POST":
+        expression = request.POST.get("expression", "")
+
+        try:
+            expr = sympify(expression)
+            resultat = str(expr)
+            resultat_latex = sympy_latex(expr)
+
+        except Exception as e:
+            erreur = f"Expression incorrecte : {e}"
+
+    return render(request, "calcul.html", {
+        "resultat": resultat,
+        "resultat_latex": resultat_latex,
+        "erreur": erreur,
+    })
