@@ -10,3 +10,5 @@ def formations(request):
     return render(request, 'formations.html')
 def recherches(request):
     return render(request, 'recherches.html')
+def latex(request):
+    return render(request, 'latex.html')
