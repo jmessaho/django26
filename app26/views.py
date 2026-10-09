@@ -77,3 +77,5 @@ def calcul(request):
         "resultat_latex": resultat_latex,
         "erreur": erreur,
     })
+def graphique(request):
+    return render(request, 'graphiques.html')

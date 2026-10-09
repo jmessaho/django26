@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from app26.views import index, formations, recherches, latex_pdf, calcul
+from app26.views import index, formations, recherches, latex_pdf, calcul, graphique
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,4 +25,5 @@ urlpatterns = [
     path('recherches/', recherches),
     path('latex/', latex_pdf),
     path('calcul/', calcul),
+    path('graphique/', graphique),
 ]
