@@ -7,63 +7,103 @@
     <title>Éditeur géométrique</title>
 
     <style>
+        * { box-sizing: border-box; }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f3f5f9;
             margin: 0;
-            padding: 30px;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
         }
 
-        .conteneur {
-            max-width: 1000px;
-            margin: auto;
+        header {
+            background: #17365d;
+            color: white;
+            padding: 18px 24px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 23px;
+        }
+
+        header p {
+            margin-bottom: 0;
+            color: #dbeafe;
+        }
+
+        .application {
+            max-width: 1250px;
+            margin: 24px auto;
+            padding: 0 16px;
+        }
+
+        .barre-outils {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 14px;
             background: white;
-            padding: 25px;
-            border-radius: 12px;
-        }
-
-        h1 {
-            color: #183153;
-        }
-
-        .formulaire {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        input, select, button {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 10px;
+            border-radius: 10px 10px 0 0;
+            border: 1px solid #dbe2ea;
         }
 
         button {
-            background: #185adb;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #1e293b;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 14px;
         }
 
-        .dessin {
-            margin-top: 25px;
-            text-align: center;
+        button:hover {
+            background: #eaf2ff;
         }
 
-        .dessin img {
-            max-width: 100%;
-            height: auto;
+        button.actif {
+            background: #1d4ed8;
+            color: white;
+            border-color: #1d4ed8;
+        }
+
+        .zone-dessin {
+            background: white;
+            border: 1px solid #dbe2ea;
+            border-top: none;
+            overflow: hidden;
+            border-radius: 0 0 10px 10px;
+        }
+
+        #plan {
+            width: 100%;
+            height: min(65vh, 600px);
+            min-height: 350px;
+            display: block;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        .statut {
+            padding: 12px 16px;
+            background: #eaf2ff;
+            color: #17365d;
+            margin-top: 14px;
+            border-radius: 7px;
+        }
+
+        .aide {
+            margin-top: 18px;
+            padding: 18px;
+            background: white;
+            border-radius: 8px;
+            line-height: 1.7;
         }
 
         @media (max-width: 600px) {
-            .formulaire {
-                grid-template-columns: 1fr;
+            .barre-outils button {
+                flex: 1 1 40%;
             }
         }
     </style>
@@ -71,98 +111,539 @@
 
 <body>
 
-<div class="conteneur">
+<header>
+    <h1>Éditeur de géométrie</h1>
+    <p>Construisez vos figures directement avec la souris.</p>
+</header>
 
-    <h1>Éditeur de dessin géométrique</h1>
+<main class="application">
 
-    <p>
-        Construisez des figures géométriques en saisissant
-        leurs coordonnées.
-    </p>
+    <div class="barre-outils" aria-label="Outils géométriques">
 
-    <form method="post">
-        {% csrf_token %}
+        <button type="button" data-tool="point">• Point</button>
+        <button type="button" data-tool="segment">／ Segment</button>
+        <button type="button" data-tool="droite">↔ Droite</button>
+        <button type="button" data-tool="triangle">△ Triangle</button>
+        <button type="button" data-tool="cercle">○ Cercle</button>
+        <button type="button" data-tool="move">✥ Déplacer</button>
+        <button type="button" data-tool="erase">⌫ Effacer</button>
 
-        <div class="formulaire">
+        <button type="button" id="annuler">↶ Annuler</button>
+        <button type="button" id="tout-effacer">Tout effacer</button>
+        <button type="button" id="exporter">Exporter en SVG</button>
 
-            <div>
-                <label for="figure">Figure géométrique</label>
+    </div>
 
-                <select name="figure" id="figure">
-                    <option value="point">Point</option>
-                    <option value="segment">Segment</option>
-                    <option value="droite">Droite</option>
-                    <option value="triangle" selected>Triangle</option>
-                    <option value="cercle">Cercle</option>
-                </select>
-            </div>
+    <div class="zone-dessin">
 
-            <div>
-                <label for="x1">x₁</label>
-                <input type="number" step="any"
-                       name="x1" id="x1" value="0">
-            </div>
+        <svg id="plan"
+             viewBox="0 0 900 560"
+             xmlns="http://www.w3.org/2000/svg"
+             role="img"
+             aria-label="Plan de construction géométrique">
 
-            <div>
-                <label for="y1">y₁</label>
-                <input type="number" step="any"
-                       name="y1" id="y1" value="0">
-            </div>
+            <defs>
+                <pattern id="grille"
+                         width="25"
+                         height="25"
+                         patternUnits="userSpaceOnUse">
+                    <path d="M 25 0 L 0 0 0 25"
+                          fill="none"
+                          stroke="#e2e8f0"
+                          stroke-width="1"/>
+                </pattern>
+            </defs>
 
-            <div>
-                <label for="x2">x₂</label>
-                <input type="number" step="any"
-                       name="x2" id="x2" value="4">
-            </div>
+            <rect width="900" height="560" fill="url(#grille)"/>
 
-            <div>
-                <label for="y2">y₂</label>
-                <input type="number" step="any"
-                       name="y2" id="y2" value="0">
-            </div>
+            <g id="dessins"></g>
+            <g id="points"></g>
 
-            <div>
-                <label for="x3">x₃</label>
-                <input type="number" step="any"
-                       name="x3" id="x3" value="2">
-            </div>
+        </svg>
 
-            <div>
-                <label for="y3">y₃</label>
-                <input type="number" step="any"
-                       name="y3" id="y3" value="3">
-            </div>
+    </div>
 
-            <div>
-                <label for="rayon">Rayon du cercle</label>
-                <input type="number" step="any"
-                       name="rayon" id="rayon" value="3">
-            </div>
+    <div class="statut" id="statut" role="status" aria-live="polite">
+        Choisissez un outil pour commencer.
+    </div>
 
-            <div>
-                <label>&nbsp;</label>
-                <button type="submit">Tracer la figure</button>
-            </div>
+    <section class="aide">
+        <strong>Comment utiliser l'éditeur ?</strong>
+        <ul>
+            <li><strong>Point :</strong> cliquez sur la zone de dessin.</li>
+            <li><strong>Segment :</strong> cliquez sur ses deux extrémités.</li>
+            <li><strong>Droite :</strong> cliquez sur deux points pour la définir.</li>
+            <li><strong>Triangle :</strong> cliquez sur ses trois sommets.</li>
+            <li><strong>Cercle :</strong> cliquez sur le centre, puis sur un point du cercle.</li>
+            <li><strong>Déplacer :</strong> sélectionnez un point et faites-le glisser.</li>
+            <li><strong>Effacer :</strong> cliquez sur un point ou une figure.</li>
+        </ul>
+    </section>
 
-        </div>
-    </form>
+</main>
 
-    {% if erreur %}
-        <p style="color: red;">{{ erreur }}</p>
-    {% endif %}
+<script>
+(() => {
+    "use strict";
 
-    {% if image %}
-        <div class="dessin">
-            <h2>Résultat</h2>
+    const svg = document.getElementById("plan");
+    const dessins = document.getElementById("dessins");
+    const couchePoints = document.getElementById("points");
+    const statut = document.getElementById("statut");
 
-            <img
-                src="data:image/png;base64,{{ image }}"
-                alt="Figure géométrique construite avec Python"
-            >
-        </div>
-    {% endif %}
+    const NS = "http://www.w3.org/2000/svg";
 
-</div>
+    let outil = null;
+    let attente = [];
+    let objets = [];
+    let historique = [];
+    let deplacement = null;
+    let prochainId = 1;
+
+    function element(nom, attributs = {}) {
+        const e = document.createElementNS(NS, nom);
+
+        for (const [cle, valeur] of Object.entries(attributs)) {
+            e.setAttribute(cle, valeur);
+        }
+
+        return e;
+    }
+
+    function sauvegarder() {
+        historique.push(JSON.stringify(objets));
+        if (historique.length > 50) {
+            historique.shift();
+        }
+    }
+
+    function creerPoint(x, y) {
+        return {
+            id: prochainId++,
+            type: "point",
+            x, y
+        };
+    }
+
+    function ajouterObjet(objet) {
+        sauvegarder();
+        objets.push(objet);
+        redessiner();
+    }
+
+    function obtenirPoint(id) {
+        return objets.find(o => o.id === id && o.type === "point");
+    }
+
+    function coordonnees(e) {
+        const p = svg.createSVGPoint();
+        p.x = e.clientX;
+        p.y = e.clientY;
+
+        const matrice = svg.getScreenCTM();
+
+        if (!matrice) {
+            return { x: 0, y: 0 };
+        }
+
+        const resultat = p.matrixTransform(matrice.inverse());
+
+        return {
+            x: Math.max(0, Math.min(900, resultat.x)),
+            y: Math.max(0, Math.min(560, resultat.y))
+        };
+    }
+
+    function distance(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function pointLePlusProche(p) {
+        const points = objets.filter(o => o.type === "point");
+
+        let meilleur = null;
+        let dMin = 16;
+
+        for (const pt of points) {
+            const d = distance(p, pt);
+
+            if (d < dMin) {
+                dMin = d;
+                meilleur = pt;
+            }
+        }
+
+        return meilleur;
+    }
+
+    function pointsSelectionnes(coords) {
+        const point = pointLePlusProche(coords);
+
+        if (point) {
+            return point.id;
+        }
+
+        const nouveau = creerPoint(coords.x, coords.y);
+        objets.push(nouveau);
+
+        return nouveau.id;
+    }
+
+    function redessiner() {
+        dessins.replaceChildren();
+        couchePoints.replaceChildren();
+
+        for (const o of objets) {
+            if (o.type === "point") continue;
+
+            const p = o.ids.map(obtenirPoint);
+
+            if (p.some(v => !v)) continue;
+
+            let forme;
+
+            if (o.type === "segment") {
+                forme = element("line", {
+                    x1: p[0].x, y1: p[0].y,
+                    x2: p[1].x, y2: p[1].y,
+                    stroke: "#2563eb",
+                    "stroke-width": 2.5,
+                    "stroke-linecap": "round"
+                });
+            }
+
+            if (o.type === "droite") {
+                const dx = p[1].x - p[0].x;
+                const dy = p[1].y - p[0].y;
+                const longueur = Math.hypot(dx, dy);
+
+                if (longueur < 0.001) continue;
+
+                const ux = dx / longueur;
+                const uy = dy / longueur;
+
+                forme = element("line", {
+                    x1: p[0].x - ux * 1500,
+                    y1: p[0].y - uy * 1500,
+                    x2: p[0].x + ux * 1500,
+                    y2: p[0].y + uy * 1500,
+                    stroke: "#7c3aed",
+                    "stroke-width": 2
+                });
+            }
+
+            if (o.type === "triangle") {
+                forme = element("polygon", {
+                    points: p.map(v => `${v.x},${v.y}`).join(" "),
+                    fill: "#60a5fa",
+                    "fill-opacity": 0.12,
+                    stroke: "#2563eb",
+                    "stroke-width": 2.5,
+                    "stroke-linejoin": "round"
+                });
+            }
+
+            if (o.type === "cercle") {
+                const r = distance(p[0], p[1]);
+
+                forme = element("circle", {
+                    cx: p[0].x,
+                    cy: p[0].y,
+                    r,
+                    fill: "#60a5fa",
+                    "fill-opacity": 0.08,
+                    stroke: "#0891b2",
+                    "stroke-width": 2.5
+                });
+            }
+
+            if (forme) {
+                forme.dataset.objectId = o.id;
+                forme.style.cursor = "pointer";
+                dessins.appendChild(forme);
+            }
+        }
+
+        for (const p of objets.filter(o => o.type === "point")) {
+            const groupe = element("g", {
+                "data-point-id": p.id,
+                style: "cursor:grab"
+            });
+
+            groupe.appendChild(element("circle", {
+                cx: p.x,
+                cy: p.y,
+                r: 5,
+                fill: "#dc2626",
+                stroke: "white",
+                "stroke-width": 1.5
+            }));
+
+            const label = element("text", {
+                x: p.x + 9,
+                y: p.y - 9,
+                fill: "#1e293b",
+                "font-size": 14,
+                "font-weight": "600"
+            });
+
+            label.textContent = "P" + p.id;
+            groupe.appendChild(label);
+
+            couchePoints.appendChild(groupe);
+        }
+    }
+
+    function choisirOutil(nom) {
+        outil = nom;
+        attente = [];
+
+        document.querySelectorAll("[data-tool]").forEach(b => {
+            b.classList.toggle("actif", b.dataset.tool === nom);
+        });
+
+        const messages = {
+            point: "Cliquez dans la zone pour créer un point.",
+            segment: "Cliquez sur deux extrémités du segment.",
+            droite: "Cliquez sur deux points distincts.",
+            triangle: "Cliquez successivement sur les trois sommets.",
+            cercle: "Cliquez sur le centre, puis sur le cercle.",
+            move: "Faites glisser un point avec la souris.",
+            erase: "Cliquez sur un point ou une figure pour l'effacer."
+        };
+
+        statut.textContent = messages[nom] || "";
+    }
+
+    function traiterClic(e) {
+        if (deplacement) return;
+
+        const coords = coordonnees(e);
+
+        if (outil === "move") return;
+
+        if (outil === "erase") {
+            const ciblePoint = e.target.closest("[data-point-id]");
+            const cibleObjet = e.target.closest("[data-object-id]");
+
+            if (ciblePoint) {
+                const id = Number(ciblePoint.dataset.pointId);
+                sauvegarder();
+
+                // Supprimer le point et les figures qui l'utilisent.
+                objets = objets.filter(o =>
+                    o.id !== id &&
+                    !(o.ids && o.ids.includes(id))
+                );
+
+                redessiner();
+                statut.textContent = "Point et constructions associées supprimés.";
+            } else if (cibleObjet) {
+                const id = Number(cibleObjet.dataset.objectId);
+
+                sauvegarder();
+                objets = objets.filter(o => o.id !== id);
+
+                redessiner();
+                statut.textContent = "Figure supprimée.";
+            }
+
+            return;
+        }
+
+        if (outil === "point") {
+            if (pointLePlusProche(coords)) {
+                statut.textContent = "Un point existe déjà à cet endroit.";
+                return;
+            }
+
+            ajouterObjet(creerPoint(coords.x, coords.y));
+            statut.textContent = "Point créé.";
+            return;
+        }
+
+        const id = pointsSelectionnes(coords);
+
+        attente.push(id);
+
+        const nombre = {
+            segment: 2,
+            droite: 2,
+            triangle: 3,
+            cercle: 2
+        }[outil];
+
+        if (attente.length < nombre) {
+            redessiner();
+            statut.textContent =
+                `Sélectionnez encore ${nombre - attente.length} point(s).`;
+            return;
+        }
+
+        const selection = [...attente];
+        attente = [];
+
+        if (new Set(selection).size !== selection.length) {
+            redessiner();
+            statut.textContent = "Choisissez des points distincts.";
+            return;
+        }
+
+        if (outil === "cercle") {
+            const a = obtenirPoint(selection[0]);
+            const b = obtenirPoint(selection[1]);
+
+            if (!a || !b || distance(a, b) < 1) {
+                redessiner();
+                statut.textContent = "Le rayon doit être positif.";
+                return;
+            }
+        }
+
+        if (outil === "triangle") {
+            const [a, b, c] = selection.map(obtenirPoint);
+
+            const aire = Math.abs(
+                (b.x - a.x) * (c.y - a.y) -
+                (c.x - a.x) * (b.y - a.y)
+            );
+
+            if (aire < 1) {
+                redessiner();
+                statut.textContent = "Les sommets ne doivent pas être alignés.";
+                return;
+            }
+        }
+
+        objets.push({
+            id: prochainId++,
+            type: outil,
+            ids: selection
+        });
+
+        // La création du nouvel objet et des éventuels points
+        // est regroupée dans une étape d'annulation.
+        if (historique.length === 0) {
+            historique.push("[]");
+        }
+
+        redessiner();
+
+        statut.textContent = "Construction terminée.";
+    }
+
+    svg.addEventListener("click", traiterClic);
+
+    svg.addEventListener("pointerdown", e => {
+        if (outil !== "move") return;
+
+        const cible = e.target.closest("[data-point-id]");
+        if (!cible) return;
+
+        const id = Number(cible.dataset.pointId);
+        const p = obtenirPoint(id);
+
+        if (!p) return;
+
+        sauvegarder();
+
+        deplacement = {
+            id,
+            pointerId: e.pointerId,
+            change: false
+        };
+
+        svg.setPointerCapture(e.pointerId);
+        e.preventDefault();
+    });
+
+    svg.addEventListener("pointermove", e => {
+        if (!deplacement || deplacement.pointerId !== e.pointerId) {
+            return;
+        }
+
+        const p = obtenirPoint(deplacement.id);
+        if (!p) return;
+
+        const c = coordonnees(e);
+
+        p.x = c.x;
+        p.y = c.y;
+
+        deplacement.change = true;
+        redessiner();
+    });
+
+    function terminerDeplacement(e) {
+        if (!deplacement || deplacement.pointerId !== e.pointerId) {
+            return;
+        }
+
+        deplacement = null;
+        statut.textContent = "Point déplacé.";
+    }
+
+    svg.addEventListener("pointerup", terminerDeplacement);
+    svg.addEventListener("pointercancel", terminerDeplacement);
+
+    document.querySelectorAll("[data-tool]").forEach(b => {
+        b.addEventListener("click", () => choisirOutil(b.dataset.tool));
+    });
+
+    document.getElementById("annuler").addEventListener("click", () => {
+        if (historique.length === 0) {
+            statut.textContent = "Aucune action à annuler.";
+            return;
+        }
+
+        objets = JSON.parse(historique.pop());
+        attente = [];
+
+        // Garantir que les identifiants futurs restent uniques.
+        prochainId = Math.max(0, ...objets.map(o => o.id)) + 1;
+
+        redessiner();
+        statut.textContent = "Dernière action annulée.";
+    });
+
+    document.getElementById("tout-effacer").addEventListener("click", () => {
+        if (objets.length === 0) return;
+
+        sauvegarder();
+        objets = [];
+        attente = [];
+        redessiner();
+
+        statut.textContent = "La zone de dessin est vide.";
+    });
+
+    document.getElementById("exporter").addEventListener("click", () => {
+        const copie = svg.cloneNode(true);
+
+        copie.setAttribute("xmlns", NS);
+        copie.setAttribute("width", "900");
+        copie.setAttribute("height", "560");
+
+        const contenu = new XMLSerializer().serializeToString(copie);
+        const blob = new Blob([contenu], {
+            type: "image/svg+xml;charset=utf-8"
+        });
+
+        const url = URL.createObjectURL(blob);
+        const lien = document.createElement("a");
+
+        lien.href = url;
+        lien.download = "construction-geometrique.svg";
+        lien.click();
+
+        URL.revokeObjectURL(url);
+    });
+
+    choisirOutil("point");
+    redessiner();
+
+})();
+</script>
 
 </body>
 </html>
