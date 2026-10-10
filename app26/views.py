@@ -1,8 +1,12 @@
 import os
 import subprocess
 import tempfile
+import matplotlib
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 from sympy import sympify, latex as sympy_latex
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 # Create your views here.
@@ -77,5 +81,52 @@ def calcul(request):
         "resultat_latex": resultat_latex,
         "erreur": erreur,
     })
-def graphique(request):
-    return render(request, 'graphiques.html')
+def geometrie(request):
+    A = (1, 1)
+    B = (5, 1)
+    C = (3, 4)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Tracer le triangle
+    x = [A[0], B[0], C[0], A[0]]
+    y = [A[1], B[1], C[1], A[1]]
+
+    ax.plot(x, y, "b-", linewidth=2)
+
+    # Afficher les sommets
+    for nom, point in [
+        ("A", A),
+        ("B", B),
+        ("C", C),
+    ]:
+        ax.scatter(*point, color="red")
+        ax.text(
+            point[0] + 0.1,
+            point[1] + 0.1,
+            nom,
+            fontsize=12,
+        )
+
+    ax.set_title("Triangle ABC")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+
+    ax.grid(True)
+    ax.set_aspect("equal", adjustable="box")
+
+    buffer = BytesIO()
+
+    fig.savefig(
+        buffer,
+        format="png",
+        bbox_inches="tight",
+    )
+
+    plt.close(fig)
+    buffer.seek(0)
+
+    return HttpResponse(
+        buffer.getvalue(),
+        content_type="image/png",
+    )
