@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Éditeur géométrique</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f5f9;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .conteneur {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        h1 {
+            color: #183153;
+        }
+
+        .formulaire {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input, select, button {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+        }
+
+        button {
+            background: #185adb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .dessin {
+            margin-top: 25px;
+            text-align: center;
+        }
+
+        .dessin img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (max-width: 600px) {
+            .formulaire {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="conteneur">
+
+    <h1>Éditeur de dessin géométrique</h1>
+
+    <p>
+        Construisez des figures géométriques en saisissant
+        leurs coordonnées.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="formulaire">
+
+            <div>
+                <label for="figure">Figure géométrique</label>
+
+                <select name="figure" id="figure">
+                    <option value="point">Point</option>
+                    <option value="segment">Segment</option>
+                    <option value="droite">Droite</option>
+                    <option value="triangle" selected>Triangle</option>
+                    <option value="cercle">Cercle</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="x1">x₁</label>
+                <input type="number" step="any"
+                       name="x1" id="x1" value="0">
+            </div>
+
+            <div>
+                <label for="y1">y₁</label>
+                <input type="number" step="any"
+                       name="y1" id="y1" value="0">
+            </div>
+
+            <div>
+                <label for="x2">x₂</label>
+                <input type="number" step="any"
+                       name="x2" id="x2" value="4">
+            </div>
+
+            <div>
+                <label for="y2">y₂</label>
+                <input type="number" step="any"
+                       name="y2" id="y2" value="0">
+            </div>
+
+            <div>
+                <label for="x3">x₃</label>
+                <input type="number" step="any"
+                       name="x3" id="x3" value="2">
+            </div>
+
+            <div>
+                <label for="y3">y₃</label>
+                <input type="number" step="any"
+                       name="y3" id="y3" value="3">
+            </div>
+
+            <div>
+                <label for="rayon">Rayon du cercle</label>
+                <input type="number" step="any"
+                       name="rayon" id="rayon" value="3">
+            </div>
+
+            <div>
+                <label>&nbsp;</label>
+                <button type="submit">Tracer la figure</button>
+            </div>
+
+        </div>
+    </form>
+
+    {% if erreur %}
+        <p style="color: red;">{{ erreur }}</p>
+    {% endif %}
+
+    {% if image %}
+        <div class="dessin">
+            <h2>Résultat</h2>
+
+            <img
+                src="data:image/png;base64,{{ image }}"
+                alt="Figure géométrique construite avec Python"
+            >
+        </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
