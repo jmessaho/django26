@@ -1,19 +1,14 @@
+/* GéoJM — outils de géométrie avancée
+   Ce module s'ajoute au prototype SVG existant. Voir README pour les intégrations HTML requises. */
 (() => {
   "use strict";
-
   const svg = document.getElementById("canvas");
   const axes = document.getElementById("axes");
-  const objLayer = document.getElementById("objects");
-  const pointLayer = document.getElementById("points");
-  const preview = document.getElementById("preview");
-  const status = document.getElementById("statusText");
-  const coordsText = document.getElementById("coordText");
-  const props = document.getElementById("propertiesContent");
-  const list = document.getElementById("objectList");
-  const empty = document.getElementById("emptyHint");
-
-  if (!svg || !axes || !objLayer || !pointLayer || !preview) {
-    console.error("GéoJM : éléments SVG manquants dans geometrie.html.");
+  const objectsLayer = document.getElementById("objects");
+  const pointsLayer = document.getElementById("points");
+  const previewLayer = document.getElementById("preview");
+  if (!svg || !objectsLayer || !pointsLayer) {
+    console.error("GéoJM : canvas SVG introuvable. Vérifiez les identifiants de geometrie.html.");
     return;
   }
 
@@ -22,597 +17,235 @@
   let tool = "select";
   let pending = [];
   let selected = null;
-  let drag = null;
-  let dragChanged = false;
+  let dragging = null;
+  let dragStartSnapshot = null;
   let history = [];
-  let pseq = 1;
-  let oseq = 1;
-  let W = 800;
-  let H = 600;
-
-  const toolInfo = {
-    select: "Sélectionnez ou déplacez un point",
-    point: "Cliquez pour créer un point",
-    segment: "Cliquez deux fois pour créer un segment",
-    line: "Cliquez deux fois pour tracer une droite",
-    triangle: "Cliquez trois fois pour construire un triangle",
-    circle: "Cliquez sur le centre puis sur un point du cercle",
-    midpoint: "Cliquez sur deux points existants",
-    perpendicular: "Choisissez deux points de la droite puis un point de passage",
-    erase: "Cliquez sur un point ou un objet à supprimer"
-  };
-
+  let pointSeq = 1;
+  let objectSeq = 1;
+  let W = 800, H = 600;
   const byId = id => document.getElementById(id);
   const fmt = n => Number.isFinite(n) ? String(Math.round(n * 100) / 100) : "—";
-  const say = message => { if (status) status.textContent = message; };
-  const pointById = id => points.find(p => p.id === id);
-  const objectById = id => objects.find(o => o.id === id);
-  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const typeLabel = type => ({
-    segment: "Segment", line: "Droite", triangle: "Triangle",
-    circle: "Cercle", midpoint: "Milieu", perpendicular: "Perpendiculaire"
-  })[type] || type;
+  const labelType = t => ({
+    segment:"Segment", line:"Droite", triangle:"Triangle", circle:"Cercle",
+    midpoint:"Milieu", perpendicular:"Perpendiculaire", parallel:"Parallèle",
+    bisector:"Bissectrice", perpendicularBisector:"Médiatrice", intersection:"Intersection"
+  })[t] || t;
+  const say = text => { const el = byId("statusText"); if (el) el.textContent = text; };
+  const pById = id => points.find(p => p.id === id);
+  const oById = id => objects.find(o => o.id === id);
+  const dist = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+  const sub = (a,b) => ({x:a.x-b.x,y:a.y-b.y});
+  const add = (a,b) => ({x:a.x+b.x,y:a.y+b.y});
+  const mul = (a,k) => ({x:a.x*k,y:a.y*k});
+  const cross = (a,b) => a.x*b.y-a.y*b.x;
 
-  function svgEl(tag, attrs = {}) {
-    const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
-    return node;
+  function svgEl(tag, attrs={}) {
+    const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));
+    return n;
   }
-
   function dimensions() {
-    const rect = svg.getBoundingClientRect();
-    W = Math.max(rect.width, 1);
-    H = Math.max(rect.height, 1);
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const r=svg.getBoundingClientRect(); W=Math.max(1,r.width); H=Math.max(1,r.height);
+    svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  }
+  function pos(ev) { const r=svg.getBoundingClientRect(); return {x:ev.clientX-r.left,y:ev.clientY-r.top}; }
+  function snapshot() { history.push(JSON.stringify({points,objects,pointSeq,objectSeq})); if(history.length>80)history.shift(); }
+  function restore(d) { points=d.points||[]; objects=d.objects||[]; pointSeq=d.pointSeq||points.length+1; objectSeq=d.objectSeq||objects.length+1; pending=[]; selected=null; render(); }
+  function undo() { if(!history.length){say("Aucune action à annuler");return;} restore(JSON.parse(history.pop()));say("Action annulée"); }
+  function createPoint(x,y,label) {
+    const n=pointSeq++;
+    const p={id:`P${n}`,label:label||String.fromCharCode(65+((n-1)%26))+(n>26?Math.floor((n-1)/26)+1:""),x,y};
+    points.push(p); return p;
+  }
+  function createObject(type, refs, extra={}) {
+    const o={id:`O${objectSeq++}`,type,refs:refs.map(p=>typeof p==="string"?p:p.id),...extra};
+    objects.push(o);return o;
   }
 
-  function eventPosition(event) {
-    const rect = svg.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  }
-
-  function snapshot() {
-    history.push(JSON.stringify({ points, objects, pseq, oseq }));
-    if (history.length > 50) history.shift();
-  }
-
-  function restore(data) {
-    points = Array.isArray(data.points) ? data.points : [];
-    objects = Array.isArray(data.objects) ? data.objects : [];
-    pseq = data.pseq || (points.length + 1);
-    oseq = data.oseq || (objects.length + 1);
-    pending = [];
-    selected = null;
-    drag = null;
-    render();
-  }
-
-  function undo() {
-    if (!history.length) {
-      say("Aucune action à annuler");
-      return;
+  // Resolves derived points/objects every render, so dependent constructions follow moved points.
+  function resolvePoint(p, depth=0) {
+    if (!p || depth>20) return null;
+    if (p.kind==="free") return p;
+    const a=pById(p.parents?.[0]), b=pById(p.parents?.[1]);
+    if(p.kind==="midpoint"&&a&&b) return {...p,x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    if(p.kind==="intersection"&&a&&b) {
+      const oa=oById(p.objectParents?.[0]), ob=oById(p.objectParents?.[1]);
+      const l1=oa&&lineForObject(oa), l2=ob&&lineForObject(ob);
+      if(l1&&l2){const q=intersection(l1,l2);if(q)return {...p,...q};}
     }
-    restore(JSON.parse(history.pop()));
-    say("Dernière action annulée");
+    return p;
   }
-
-  function addPoint(x, y) {
-    const n = pseq++;
-    const label = String.fromCharCode(64 + ((n - 1) % 26) + 1) + (n > 26 ? Math.floor((n - 1) / 26) + 1 : "");
-    const point = { id: `P${n}`, label, x, y };
-    points.push(point);
-    return point;
+  function point(p) { return resolvePoint(p); }
+  function pointXY(id) { const p=point(pById(id)); return p?{x:p.x,y:p.y}:null; }
+  function lineForObject(o) {
+    const ps=o.refs.map(pointXY); if(ps.some(p=>!p))return null;
+    if(["line","segment","parallel","perpendicular","perpendicularBisector","bisector"].includes(o.type)) {
+      if(o.type==="perpendicular"||o.type==="parallel") {
+        const base=ps[0],through=ps[2]||ps[1],dir=sub(ps[1],ps[0]);
+        return o.type==="parallel"?{p:through,d:dir,segment:false}:{p:through,d:{x:-dir.y,y:dir.x},segment:false};
+      }
+      if(o.type==="perpendicularBisector") return {p:mul(add(ps[0],ps[1]),.5),d:{x:-(ps[1].y-ps[0].y),y:ps[1].x-ps[0].x},segment:false};
+      if(o.type==="bisector"&&ps.length>=3) {
+        const v1=sub(ps[0],ps[1]),v2=sub(ps[2],ps[1]),l1=Math.hypot(v1.x,v1.y),l2=Math.hypot(v2.x,v2.y);
+        if(!l1||!l2)return null;
+        return {p:ps[1],d:add(mul(v1,1/l1),mul(v2,1/l2)),segment:false};
+      }
+      return {p:ps[0],d:sub(ps[1],ps[0]),segment:o.type==="segment"};
+    }
+    return null;
   }
-
-  function addObject(type, selectedPoints) {
-    const object = { id: `O${oseq++}`, type, refs: selectedPoints.map(p => p.id) };
-    objects.push(object);
-    return object;
+  function intersection(l1,l2) {
+    const den=cross(l1.d,l2.d); if(Math.abs(den)<1e-8)return null;
+    const t=cross(sub(l2.p,l1.p),l2.d)/den;
+    return add(l1.p,mul(l1.d,t));
   }
-
-  function lineCoordinates(a, b) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 0.01) return null;
-    const margin = Math.max(W, H) * 2;
-    return {
-      x1: a.x - dx / length * margin,
-      y1: a.y - dy / length * margin,
-      x2: b.x + dx / length * margin,
-      y2: b.y + dy / length * margin
-    };
+  function lineEnds(l) {
+    const len=Math.max(W,H)*2;
+    const n=Math.hypot(l.d.x,l.d.y); if(n<1e-8)return null;
+    const u=mul(l.d,1/n);
+    return {x1:l.p.x-u.x*len,y1:l.p.y-u.y*len,x2:l.p.x+u.x*len,y2:l.p.y+u.y*len};
   }
 
   function drawAxes() {
+    if(!axes)return;
     axes.replaceChildren();
-    const cx = W / 2;
-    const cy = H / 2;
-
-    axes.append(
-      svgEl("line", { x1: 0, y1: cy, x2: W, y2: cy, class: "axis" }),
-      svgEl("line", { x1: cx, y1: 0, x2: cx, y2: H, class: "axis" })
-    );
-
-    for (let x = cx + 25; x < W; x += 25) {
-      axes.append(svgEl("line", { x1: x, y1: cy - 3, x2: x, y2: cy + 3, class: "axis" }));
-    }
-    for (let x = cx - 25; x > 0; x -= 25) {
-      axes.append(svgEl("line", { x1: x, y1: cy - 3, x2: x, y2: cy + 3, class: "axis" }));
-    }
-    for (let y = cy + 25; y < H; y += 25) {
-      axes.append(svgEl("line", { x1: cx - 3, y1: y, x2: cx + 3, y2: y, class: "axis" }));
-    }
-    for (let y = cy - 25; y > 0; y -= 25) {
-      axes.append(svgEl("line", { x1: cx - 3, y1: y, x2: cx + 3, y2: y, class: "axis" }));
-    }
-
-    // Important : append() ne renvoie pas le nœud ajouté.
-    const xLabel = svgEl("text", { x: W - 17, y: cy - 8, class: "axis-label" });
-    xLabel.textContent = "x";
-    axes.append(xLabel);
-
-    const yLabel = svgEl("text", { x: cx + 8, y: 13, class: "axis-label" });
-    yLabel.textContent = "y";
-    axes.append(yLabel);
+    const cx=W/2,cy=H/2;
+    axes.append(svgEl("line",{x1:0,y1:cy,x2:W,y2:cy,class:"axis"}),svgEl("line",{x1:cx,y1:0,x2:cx,y2:H,class:"axis"}));
+    for(let x=cx+25;x<W;x+=25)axes.append(svgEl("line",{x1:x,y1:cy-3,x2:x,y2:cy+3,class:"axis"}));
+    for(let x=cx-25;x>0;x-=25)axes.append(svgEl("line",{x1:x,y1:cy-3,x2:x,y2:cy+3,class:"axis"}));
+    for(let y=cy+25;y<H;y+=25)axes.append(svgEl("line",{x1:cx-3,y1:y,x2:cx+3,y2:y,class:"axis"}));
+    for(let y=cy-25;y>0;y-=25)axes.append(svgEl("line",{x1:cx-3,y1:y,x2:cx+3,y2:y,class:"axis"}));
+    const xl=svgEl("text",{x:W-17,y:cy-8,class:"axis-label"});xl.textContent="x";axes.append(xl);
+    const yl=svgEl("text",{x:cx+8,y:13,class:"axis-label"});yl.textContent="y";axes.append(yl);
   }
-
-  function renderObject(object) {
-    const ps = object.refs.map(pointById);
-    if (ps.some(p => !p)) return null;
-
-    const attrs = {
-      class: "geo-line" + (selected === object.id ? " selected" : ""),
-      "data-oid": object.id
-    };
-    let node = null;
-    const a = ps[0];
-    const b = ps[1];
-
-    if (object.type === "segment") {
-      node = svgEl("line", { ...attrs, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
-    } else if (object.type === "line") {
-      const line = lineCoordinates(a, b);
-      if (line) node = svgEl("line", { ...attrs, ...line });
-    } else if (object.type === "triangle") {
-      node = svgEl("polygon", {
-        ...attrs, points: ps.map(p => `${p.x},${p.y}`).join(" "),
-        fill: "rgba(49,94,251,.05)"
-      });
-    } else if (object.type === "circle") {
-      node = svgEl("circle", {
-        ...attrs, cx: a.x, cy: a.y, r: distance(a, b),
-        fill: "rgba(49,94,251,.03)"
-      });
-    } else if (object.type === "midpoint") {
-      node = svgEl("circle", {
-        ...attrs, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2,
-        r: 5, fill: "#21a675"
-      });
-    } else if (object.type === "perpendicular" && ps.length === 3) {
-      const c = ps[2];
-      const line = lineCoordinates(c, { x: c.x - (b.y - a.y), y: c.y + (b.x - a.x) });
-      if (line) node = svgEl("line", { ...attrs, ...line });
+  function renderObject(o) {
+    const ps=o.refs.map(pointXY); if(ps.some(p=>!p))return null;
+    const attrs={class:"geo-line"+(selected===o.id?" selected":""),"data-oid":o.id};
+    let el=null;
+    if(o.type==="segment")el=svgEl("line",{...attrs,x1:ps[0].x,y1:ps[0].y,x2:ps[1].x,y2:ps[1].y});
+    else if(["line","parallel","perpendicular","perpendicularBisector","bisector"].includes(o.type)){
+      const l=lineForObject(o),ends=l&&lineEnds(l);if(ends)el=svgEl("line",{...attrs,...ends});
+    } else if(o.type==="triangle")el=svgEl("polygon",{...attrs,points:ps.map(p=>`${p.x},${p.y}`).join(" "),fill:"rgba(49,94,251,.05)"});
+    else if(o.type==="circle")el=svgEl("circle",{...attrs,cx:ps[0].x,cy:ps[0].y,r:dist(ps[0],ps[1]),fill:"rgba(49,94,251,.03)"});
+    else if(o.type==="midpoint"){const p=mul(add(ps[0],ps[1]),.5);el=svgEl("circle",{...attrs,cx:p.x,cy:p.y,r:5,fill:"#21a675"});}
+    else if(o.type==="intersection"){
+      const p=resolvePoint(o);if(p)el=svgEl("circle",{...attrs,cx:p.x,cy:p.y,r:5,fill:"#21a675"});
     }
-
-    if (node) {
-      node.addEventListener("pointerdown", event => {
-        if (tool === "select") {
-          event.stopPropagation();
-          selected = object.id;
-          render();
-        }
-      });
-      node.addEventListener("click", event => {
-        if (tool === "erase") {
-          event.stopPropagation();
-          removeObject(object.id);
-        }
-      });
+    if(el){
+      el.addEventListener("pointerdown",ev=>{if(tool==="select"){ev.stopPropagation();selected=o.id;render();}});
+      el.addEventListener("click",ev=>{if(tool==="erase"){ev.stopPropagation();removeObject(o.id);}});
     }
-    return node;
+    return el;
   }
-
-  function renderProperties() {
-    if (!props) return;
-    const point = pointById(selected);
-    const object = objectById(selected);
-
-    if (!point && !object) {
-      props.className = "empty-props";
-      props.textContent = "Sélectionnez un point ou un objet pour consulter ses propriétés.";
-      return;
-    }
-
-    props.className = "";
-    if (point) {
-      props.innerHTML = "";
-      const card = document.createElement("div");
-      card.className = "prop-card";
-      const title = document.createElement("b");
-      title.textContent = `Point ${point.label}`;
-      card.append(title);
-      const rows = [
-        ["Coordonnée x", fmt((point.x - W / 2) / 25)],
-        ["Coordonnée y", fmt((H / 2 - point.y) / 25)],
-        ["Position écran", `${fmt(point.x)} ; ${fmt(point.y)}`]
-      ];
-      rows.forEach(([label, value]) => {
-        const row = document.createElement("div");
-        row.className = "prop-row";
-        const l = document.createElement("span");
-        l.textContent = label;
-        const v = document.createElement("strong");
-        v.textContent = value;
-        row.append(l, v);
-        card.append(row);
-      });
-      props.append(card);
-      return;
-    }
-
-    const ps = object.refs.map(pointById);
-    let measure = "—";
-    if (object.type === "segment") measure = fmt(distance(ps[0], ps[1]) / 25);
-    if (object.type === "circle") measure = "Rayon : " + fmt(distance(ps[0], ps[1]) / 25);
-    if (object.type === "triangle") {
-      measure = ps.map((p, i) => fmt(distance(p, ps[(i + 1) % 3]) / 25)).join(" ; ");
-    }
-    props.innerHTML = "";
-    const card = document.createElement("div");
-    card.className = "prop-card";
-    const title = document.createElement("b");
-    title.textContent = typeLabel(object.type);
-    card.append(title);
-    [
-      ["Défini par", ps.map(p => p.label).join(", ")],
-      ["Mesure (unités de grille)", measure]
-    ].forEach(([label, value]) => {
-      const row = document.createElement("div");
-      row.className = "prop-row";
-      const l = document.createElement("span");
-      l.textContent = label;
-      const v = document.createElement("strong");
-      v.textContent = value;
-      row.append(l, v);
-      card.append(row);
-    });
-    props.append(card);
+  function renderProps() {
+    const panel=byId("propertiesContent");if(!panel)return;
+    const p=point(pById(selected)),o=oById(selected);
+    if(!p&&!o){panel.className="empty-props";panel.textContent="Sélectionnez un point ou un objet pour consulter ses propriétés.";return;}
+    panel.className="";panel.replaceChildren();
+    const card=document.createElement("div");card.className="prop-card";
+    const title=document.createElement("b");title.textContent=p?`Point ${p.label}`:labelType(o.type);card.append(title);
+    const rows=p?[["x",fmt((p.x-W/2)/25)],["y",fmt((H/2-p.y)/25)]]:[["Défini par",o.refs.map(id=>pById(id)?.label||id).join(", ")],["Type",labelType(o.type)]];
+    rows.forEach(([k,v])=>{const row=document.createElement("div");row.className="prop-row";const a=document.createElement("span"),b=document.createElement("strong");a.textContent=k;b.textContent=v;row.append(a,b);card.append(row);});
+    panel.append(card);
   }
-
   function renderList() {
-    if (!list) return;
-    list.replaceChildren();
-    if (!points.length && !objects.length) {
-      list.textContent = "Aucun objet pour le moment.";
-      return;
-    }
-
-    const addItem = (id, name, icon) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "object-item" + (selected === id ? " active" : "");
-      const iconSpan = document.createElement("span");
-      iconSpan.textContent = icon;
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = name;
-      const arrow = document.createElement("span");
-      arrow.textContent = "›";
-      button.append(iconSpan, nameSpan, arrow);
-      button.addEventListener("click", () => { selected = id; render(); });
-      list.append(button);
-    };
-
-    points.forEach(p => addItem(p.id, `Point ${p.label}`, "•"));
-    objects.forEach(o => addItem(o.id, typeLabel(o.type), ({
-      segment: "／", line: "↗", triangle: "△", circle: "◯",
-      midpoint: "⊙", perpendicular: "⊥"
-    })[o.type] || "◇"));
+    const panel=byId("objectList");if(!panel)return;panel.replaceChildren();
+    if(!points.length&&!objects.length){panel.textContent="Aucun objet pour le moment.";return;}
+    const addItem=(id,name,icon)=>{const b=document.createElement("button");b.type="button";b.className="object-item"+(selected===id?" active":"");const i=document.createElement("span"),n=document.createElement("span"),a=document.createElement("span");i.textContent=icon;n.textContent=name;a.textContent="›";b.append(i,n,a);b.onclick=()=>{selected=id;render();};panel.append(b);};
+    points.forEach(p=>addItem(p.id,`Point ${p.label}`,"•"));
+    objects.forEach(o=>addItem(o.id,labelType(o.type),"◇"));
   }
-
   function render() {
     dimensions();
-    const grid = byId("gridLayer");
-    if (grid && byId("gridToggle")) grid.style.display = byId("gridToggle").checked ? "" : "none";
-    drawAxes();
-    objLayer.replaceChildren();
-    pointLayer.replaceChildren();
-    preview.replaceChildren();
-
-    objects.forEach(object => {
-      const node = renderObject(object);
-      if (node) objLayer.append(node);
-    });
-
-    points.forEach(point => {
-      const group = svgEl("g", { "data-pid": point.id });
-      const circle = svgEl("circle", {
-        cx: point.x, cy: point.y,
-        r: selected === point.id ? 6 : 4.7,
-        class: "geo-point" + (selected === point.id ? " selected" : "")
+    const grid=byId("gridLayer");if(grid&&byId("gridToggle"))grid.style.display=byId("gridToggle").checked?"":"none";
+    drawAxes();objectsLayer.replaceChildren();pointsLayer.replaceChildren();if(previewLayer)previewLayer.replaceChildren();
+    objects.forEach(o=>{const n=renderObject(o);if(n)objectsLayer.append(n);});
+    points.forEach(raw=>{
+      const p=point(raw);if(!p)return;
+      const g=svgEl("g",{"data-pid":raw.id});
+      const c=svgEl("circle",{cx:p.x,cy:p.y,r:selected===raw.id?6:4.7,class:"geo-point"+(selected===raw.id?" selected":"")});
+      c.addEventListener("pointerdown",ev=>{
+        if(tool==="select"&&raw.kind!=="midpoint"&&raw.kind!=="intersection"){ev.stopPropagation();selected=raw.id;dragging=raw.id;dragStartSnapshot=JSON.stringify({points,objects,pointSeq,objectSeq});if(svg.setPointerCapture)svg.setPointerCapture(ev.pointerId);render();}
+        else if(tool==="erase"){ev.stopPropagation();removePoint(raw.id);}
       });
-
-      circle.addEventListener("pointerdown", event => {
-        if (tool === "select") {
-          event.stopPropagation();
-          selected = point.id;
-          drag = point.id;
-          dragChanged = false;
-          if (svg.setPointerCapture) svg.setPointerCapture(event.pointerId);
-          render();
-        } else if (tool === "erase") {
-          event.stopPropagation();
-          removePoint(point.id);
-        }
-      });
-
-      circle.addEventListener("click", event => {
-        event.stopPropagation();
-        if (tool !== "select" && tool !== "erase") handlePointTool(point);
-      });
-
-      group.append(circle);
-      if (byId("labelsToggle") && byId("labelsToggle").checked) {
-        const label = svgEl("text", { x: point.x + 8, y: point.y - 8, class: "point-label" });
-        label.textContent = point.label;
-        group.append(label);
-      }
-      pointLayer.append(group);
+      c.addEventListener("click",ev=>{ev.stopPropagation();if(!["select","erase"].includes(tool))handlePoint(raw);});
+      g.append(c);
+      if(byId("labelsToggle")&&byId("labelsToggle").checked){const t=svgEl("text",{x:p.x+8,y:p.y-8,class:"point-label"});t.textContent=raw.label;g.append(t);}
+      pointsLayer.append(g);
     });
-
-    if (pending.length) {
-      const ps = pending.map(pointById).filter(Boolean);
-      ps.forEach(p => preview.append(svgEl("circle", { cx: p.x, cy: p.y, r: 4.5, fill: "#8498ff" })));
-      if (ps.length >= 2) {
-        if (tool === "segment") preview.append(svgEl("line", {
-          x1: ps[0].x, y1: ps[0].y, x2: ps[1].x, y2: ps[1].y, class: "preview"
-        }));
-        if (tool === "line") {
-          const line = lineCoordinates(ps[0], ps[1]);
-          if (line) preview.append(svgEl("line", { ...line, class: "preview" }));
-        }
-        if (tool === "triangle") preview.append(svgEl("polyline", {
-          points: ps.map(p => `${p.x},${p.y}`).join(" "), class: "preview"
-        }));
-        if (tool === "circle") preview.append(svgEl("circle", {
-          cx: ps[0].x, cy: ps[0].y, r: distance(ps[0], ps[1]), class: "preview"
-        }));
-      }
-    }
-
-    if (empty) empty.style.display = (points.length || objects.length) ? "none" : "block";
-    renderProperties();
-    renderList();
+    if(empty)empty.style.display=points.length||objects.length?"none":"block";
+    renderProps();renderList();
   }
-
-  function removeObject(id) {
-    snapshot();
-    objects = objects.filter(o => o.id !== id);
-    selected = null;
-    render();
-    say("Objet supprimé");
+  function removeObject(id){snapshot();objects=objects.filter(o=>o.id!==id);selected=null;render();say("Objet supprimé");}
+  function removePoint(id){snapshot();points=points.filter(p=>p.id!==id);objects=objects.filter(o=>!o.refs.includes(id));selected=null;render();say("Point et objets associés supprimés");}
+  function finish(type,ps){snapshot();const o=createObject(type,ps);pending=[];selected=o.id;render();say(labelType(type)+" créé");}
+  function handlePoint(p) {
+    if(tool==="midpoint"){
+      if(!pending.length){pending=[p.id];say("Choisissez le deuxième point");return;}
+      if(p.id!==pending[0])finish("midpoint",pending.map(pById).concat(p));return;
+    }
+    if(tool==="perpendicular"||tool==="parallel"){
+      if(pending.includes(p.id))return;pending.push(p.id);
+      if(pending.length===1)say("Choisissez le deuxième point de la droite");
+      else if(pending.length===2)say("Choisissez le point de passage");
+      else finish(tool,pending.map(pById));render();return;
+    }
+    if(tool==="perpendicularBisector"){
+      if(!pending.length){pending=[p.id];say("Choisissez le deuxième point du segment");return;}
+      if(p.id!==pending[0])finish("perpendicularBisector",pending.map(pById).concat(p));return;
+    }
+    if(tool==="bisector"){
+      if(pending.includes(p.id))return;pending.push(p.id);
+      if(pending.length<3)say(`Choisissez le point ${pending.length===1?"du sommet":pending.length===2?"du deuxième côté":"suivant"}`);
+      if(pending.length===3)finish("bisector",pending.map(pById));render();return;
+    }
+    const required={segment:2,line:2,triangle:3,circle:2}[tool];
+    if(!required||pending.includes(p.id))return;pending.push(p.id);
+    if(pending.length>=required)finish(tool,pending.map(pById));else{say(`${pending.length}/${required} points sélectionnés`);render();}
   }
-
-  function removePoint(id) {
-    snapshot();
-    points = points.filter(p => p.id !== id);
-    objects = objects.filter(o => !o.refs.includes(id));
-    selected = null;
-    render();
-    say("Point et objets associés supprimés");
+  function canvasClick(p) {
+    if(tool==="point"){snapshot();const q=createPoint(p.x,p.y);selected=q.id;render();say(`Point ${q.label} créé`);return;}
+    if(["segment","line","triangle","circle"].includes(tool)){
+      snapshot();pending.push(createPoint(p.x,p.y).id);const n={segment:2,line:2,triangle:3,circle:2}[tool];
+      if(pending.length>=n)finish(tool,pending.map(pById));else{render();say(`${pending.length}/${n} points placés`);}return;
+    }
+    if(tool==="select"){selected=null;render();}
+    else if(tool==="erase"){let near=null,d=18;points.forEach(q=>{const dd=dist(p,q);if(dd<d){d=dd;near=q.id;}});if(near)removePoint(near);}
+    else say("Sélectionnez des points existants pour cette construction");
   }
-
-  function finish(type, selectedPoints) {
-    snapshot();
-    const object = addObject(type, selectedPoints);
-    pending = [];
-    selected = object.id;
-    render();
-    say(typeLabel(type) + " créé");
-  }
-
-  function handlePointTool(point) {
-    if (tool === "midpoint") {
-      if (!pending.length) {
-        pending = [point.id];
-        say("Choisissez le deuxième point");
-        render();
-      } else if (point.id !== pending[0]) {
-        finish("midpoint", [pointById(pending[0]), point]);
-      }
-      return;
-    }
-
-    if (tool === "perpendicular") {
-      if (pending.includes(point.id)) return;
-      pending.push(point.id);
-      if (pending.length === 1) say("Choisissez le deuxième point de la droite");
-      else if (pending.length === 2) say("Choisissez le point de passage");
-      else finish("perpendicular", pending.map(pointById));
-      render();
-      return;
-    }
-
-    const required = { segment: 2, line: 2, triangle: 3, circle: 2 }[tool];
-    if (!required || pending.includes(point.id)) return;
-    pending.push(point.id);
-    if (pending.length >= required) finish(tool, pending.map(pointById));
-    else {
-      say(`${pending.length}/${required} points sélectionnés`);
-      render();
-    }
-  }
-
-  function canvasClick(point) {
-    if (tool === "point") {
-      snapshot();
-      const created = addPoint(point.x, point.y);
-      selected = created.id;
-      render();
-      say(`Point ${created.label} créé`);
-      return;
-    }
-
-    if (["segment", "line", "triangle", "circle"].includes(tool)) {
-      snapshot();
-      pending.push(addPoint(point.x, point.y).id);
-      const required = { segment: 2, line: 2, triangle: 3, circle: 2 }[tool];
-      if (pending.length >= required) finish(tool, pending.map(pointById));
-      else {
-        render();
-        say(`${pending.length}/${required} points placés`);
-      }
-      return;
-    }
-
-    if (tool === "midpoint" || tool === "perpendicular") {
-      say("Cliquez sur des points existants pour cette construction");
-      return;
-    }
-
-    if (tool === "erase") {
-      let nearest = null;
-      let nearestDistance = 18;
-      points.forEach(p => {
-        const d = distance(point, p);
-        if (d < nearestDistance) { nearestDistance = d; nearest = p.id; }
-      });
-      if (nearest) removePoint(nearest);
-      return;
-    }
-
-    selected = null;
-    render();
-  }
-
-  svg.addEventListener("pointerdown", event => {
-    if (event.target.closest("[data-pid]") || event.target.closest("[data-oid]")) return;
-    if (tool === "select") {
-      selected = null;
-      render();
-      return;
-    }
-    canvasClick(eventPosition(event));
+  svg.addEventListener("pointerdown",ev=>{if(ev.target.closest("[data-pid]")||ev.target.closest("[data-oid]"))return;if(tool!=="select")canvasClick(pos(ev));else{selected=null;render();}});
+  svg.addEventListener("pointermove",ev=>{
+    const p=pos(ev),c=byId("coordText");if(c)c.textContent=`x : ${fmt((p.x-W/2)/25)} · y : ${fmt((H/2-p.y)/25)}`;
+    if(dragging){const q=pById(dragging);if(q){q.x=p.x;q.y=p.y;render();}}
   });
+  svg.addEventListener("pointerup",()=>{if(dragging&&dragStartSnapshot){history.push(dragStartSnapshot);if(history.length>80)history.shift();}dragging=null;dragStartSnapshot=null;});
+  svg.addEventListener("pointercancel",()=>{dragging=null;dragStartSnapshot=null;});
 
-  svg.addEventListener("pointermove", event => {
-    const position = eventPosition(event);
-    if (coordsText) coordsText.textContent =
-      `x : ${fmt((position.x - W / 2) / 25)} · y : ${fmt((H / 2 - position.y) / 25)}`;
+  document.querySelectorAll(".tool").forEach(button=>button.addEventListener("click",()=>{
+    tool=button.dataset.tool;pending=[];document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b===button));
+    say(toolInfoFor(tool));render();
+  }));
+  function toolInfoFor(t){return({
+    select:"Sélectionnez ou déplacez un point",point:"Cliquez pour créer un point",
+    segment:"Cliquez deux fois ou sélectionnez deux points",line:"Cliquez deux fois ou sélectionnez deux points",
+    triangle:"Cliquez trois fois pour construire un triangle",circle:"Cliquez sur le centre puis sur le rayon",
+    midpoint:"Sélectionnez deux points existants",perpendicular:"Sélectionnez deux points de la droite puis le point de passage",
+    parallel:"Sélectionnez deux points de la droite puis le point de passage",
+    perpendicularBisector:"Sélectionnez les deux extrémités du segment",bisector:"Sélectionnez trois points : côté, sommet, côté",
+    erase:"Cliquez sur un objet à supprimer"
+  })[t]||"Choisissez un outil";}
 
-    if (drag) {
-      const point = pointById(drag);
-      if (point) {
-        point.x = position.x;
-        point.y = position.y;
-        dragChanged = true;
-        render();
-      }
-    }
-  });
+  if(byId("gridToggle"))byId("gridToggle").addEventListener("change",render);
+  if(byId("labelsToggle"))byId("labelsToggle").addEventListener("change",render);
+  if(byId("undoBtn"))byId("undoBtn").addEventListener("click",undo);
+  if(byId("newBtn"))byId("newBtn").addEventListener("click",()=>{if((points.length||objects.length)&&!confirm("Créer une nouvelle construction ?"))return;snapshot();points=[];objects=[];pending=[];selected=null;render();say("Nouvelle construction");});
+  if(byId("clearBtn"))byId("clearBtn").addEventListener("click",()=>{if(!confirm("Effacer toute la construction ?"))return;snapshot();points=[];objects=[];pending=[];selected=null;render();say("Construction effacée");});
 
-  svg.addEventListener("pointerup", () => {
-    if (drag && dragChanged) {
-      // Enregistrer l'état après déplacement pour permettre l'annulation.
-      snapshot();
-      say("Point déplacé");
-    }
-    drag = null;
-    dragChanged = false;
-  });
-  svg.addEventListener("pointercancel", () => { drag = null; dragChanged = false; });
-
-  document.querySelectorAll(".tool").forEach(button => {
-    button.addEventListener("click", () => {
-      tool = button.dataset.tool;
-      pending = [];
-      document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
-      say(toolInfo[tool] || "");
-      render();
-    });
-  });
-
-  if (byId("gridToggle")) byId("gridToggle").addEventListener("change", render);
-  if (byId("labelsToggle")) byId("labelsToggle").addEventListener("change", render);
-  if (byId("undoBtn")) byId("undoBtn").addEventListener("click", undo);
-
-  if (byId("newBtn")) byId("newBtn").addEventListener("click", () => {
-    if ((points.length || objects.length) && !confirm("Créer une nouvelle construction ? Exportez d'abord si nécessaire.")) return;
-    snapshot(); points = []; objects = []; pending = []; selected = null; render(); say("Nouvelle construction");
-  });
-
-  if (byId("clearBtn")) byId("clearBtn").addEventListener("click", () => {
-    if (!confirm("Effacer toute la construction ?")) return;
-    snapshot(); points = []; objects = []; pending = []; selected = null; render(); say("Construction effacée");
-  });
-
-  function download(filename, content, mime) {
-    const url = URL.createObjectURL(new Blob([content], { type: mime }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  if (byId("saveBtn")) byId("saveBtn").addEventListener("click", () => {
-    download("construction-geojm.json", JSON.stringify({
-      format: "geojm-v1", points, objects, pseq, oseq
-    }, null, 2), "application/json");
-    say("Construction exportée en JSON");
-  });
-
-  if (byId("exportBtn")) byId("exportBtn").addEventListener("click", () => {
-    const clone = svg.cloneNode(true);
-    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    const previewLayer = clone.querySelector("#preview");
-    if (previewLayer) previewLayer.replaceChildren();
-    download("construction-geojm.svg", new XMLSerializer().serializeToString(clone), "image/svg+xml");
-    say("Dessin exporté en SVG");
-  });
-
-  if (byId("importBtn") && byId("importFile")) {
-    byId("importBtn").addEventListener("click", () => byId("importFile").click());
-    byId("importFile").addEventListener("change", async event => {
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
-      try {
-        const data = JSON.parse(await file.text());
-        if (!Array.isArray(data.points) || !Array.isArray(data.objects)) throw new Error("Format invalide");
-        snapshot();
-        restore({
-          points: data.points, objects: data.objects,
-          pseq: data.pseq || Math.max(0, ...data.points.map(p => Number(String(p.id).slice(1)) || 0)) + 1,
-          oseq: data.oseq || Math.max(0, ...data.objects.map(o => Number(String(o.id).slice(1)) || 0)) + 1
-        });
-        say("Construction importée");
-      } catch (error) {
-        alert("Fichier JSON invalide ou format non reconnu.");
-      }
-      event.target.value = "";
-    });
-  }
-
-  document.addEventListener("keydown", event => {
-    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
-    const shortcuts = { v: "select", p: "point", s: "segment", d: "line", t: "triangle", c: "circle", e: "erase" };
-    const key = event.key.toLowerCase();
-    if (shortcuts[key]) {
-      const button = document.querySelector(`.tool[data-tool="${shortcuts[key]}"]`);
-      if (button) button.click();
-    }
-    if ((event.ctrlKey || event.metaKey) && key === "z") {
-      event.preventDefault();
-      undo();
-    }
-    if (event.key === "Escape") {
-      pending = [];
-      render();
-      say("Construction en cours annulée");
-    }
-  });
-
-  window.addEventListener("resize", render);
-  render();
-  say(toolInfo.select);
+  function download(name,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  if(byId("saveBtn"))byId("saveBtn").addEventListener("click",()=>download("construction-geojm.json",JSON.stringify({format:"geojm-v2",points,objects,pointSeq,objectSeq},null,2),"application/json"));
+  if(byId("exportBtn"))byId("exportBtn").addEventListener("click",()=>{const clone=svg.cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("construction-geojm.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml");});
+  if(byId("importBtn")&&byId("importFile")){byId("importBtn").addEventListener("click",()=>byId("importFile").click());byId("importFile").addEventListener("change",async ev=>{const f=ev.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d.points)||!Array.isArray(d.objects))throw new Error("JSON invalide");snapshot();restore({points:d.points,objects:d.objects,pointSeq:d.pointSeq||d.pseq,objectSeq:d.objectSeq||d.oseq});say("Construction importée");}catch(e){alert("Fichier JSON invalide ou non reconnu.");}ev.target.value="";});}
+  document.addEventListener("keydown",ev=>{if(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))return;const map={v:"select",p:"point",s:"segment",d:"line",t:"triangle",c:"circle",e:"erase"};if(map[ev.key.toLowerCase()])document.querySelector(`.tool[data-tool="${map[ev.key.toLowerCase()]}"]`)?.click();if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==="z"){ev.preventDefault();undo();}if(ev.key==="Escape"){pending=[];render();say("Construction annulée");}});
+  window.addEventListener("resize",render);
+  dimensions();render();say(toolInfoFor("select"));
 })();
