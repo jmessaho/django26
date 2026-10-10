@@ -24,6 +24,5 @@ urlpatterns = [
     path('', index),
     path('formations/', formations),
     path('recherches/', recherches),
-    path('latex/', latex_pdf),
     path("geometrie/", geometrie, name="geometrie"),
 ]
