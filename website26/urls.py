@@ -24,5 +24,4 @@ urlpatterns = [
     path('', index),
     path('formations/', formations),
     path('recherches/', recherches),
-    path("geometrie/", geometrie, name="geometrie"),
 ]
