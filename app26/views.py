@@ -19,5 +19,5 @@ def formations(request):
     return render(request, 'formations.html')
 def recherches(request):
     return render(request, 'recherches.html')
-def geometrie(request):
-    return render(request, "geometrie.html")
+def prod(request):
+    return render(request, "proddidac.html")
