@@ -1,108 +1,51 @@
-<!DOCTYPE html>
+{% load static %}
+<!doctype html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>Géométrie dynamique</title>
-
-    <script src="https://www.geogebra.org/apps/deployggb.js"></script>
-
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f1f5f9;
-            color: #1e293b;
-        }
-
-        header {
-            padding: 20px;
-            background: #17365d;
-            color: white;
-        }
-
-        header h1 {
-            margin: 0 0 8px;
-        }
-
-        main {
-            max-width: 1400px;
-            margin: 20px auto;
-            padding: 0 16px;
-        }
-
-        .editeur {
-            background: white;
-            padding: 12px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px #00000012;
-        }
-
-        #ggb-element {
-            width: 100%;
-            min-height: 650px;
-        }
-
-        .description {
-            margin-top: 16px;
-            line-height: 1.6;
-        }
-    </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GéoLab — Géométrie dynamique</title>
+<link rel="stylesheet" href="{% static 'app26/css/geometrie.css' %}">
 </head>
-
 <body>
-
-<header>
-    <h1>Éditeur de géométrie dynamique</h1>
-    <p>Construisez, mesurez et explorez les propriétés géométriques.</p>
+<header class="topbar">
+  <div class="brand"><span class="logo">G</span><div><b>GéoLab</b><small>Géométrie dynamique</small></div></div>
+  <div class="menu"><button id="newBtn">Nouveau</button><button id="undoBtn">Annuler</button><button id="clearBtn">Tout effacer</button></div>
+  <div class="actions"><button id="saveBtn" class="primary">Enregistrer JSON</button><button id="exportBtn">Exporter SVG</button></div>
 </header>
-
-<main>
-    <section class="editeur">
-        <div id="ggb-element"></div>
-    </section>
-
-    <section class="description">
-        <h2>Votre espace de géométrie</h2>
-
-        <p>
-            Utilisez les outils de GeoGebra pour construire des points,
-            des segments, des droites, des triangles et des cercles.
-        </p>
-
-        <p>
-            Explorez les angles, les milieux, les médiatrices,
-            les parallèles, les perpendiculaires et les symétries.
-        </p>
-    </section>
+<main class="workspace">
+<aside class="tools">
+  <h2>CONSTRUCTIONS</h2>
+  <button class="tool active" data-tool="select"><span>↖</span>Sélection / déplacer</button>
+  <button class="tool" data-tool="point"><span>•</span>Point</button>
+  <button class="tool" data-tool="segment"><span>／</span>Segment</button>
+  <button class="tool" data-tool="line"><span>↗</span>Droite</button>
+  <button class="tool" data-tool="triangle"><span>△</span>Triangle</button>
+  <button class="tool" data-tool="circle"><span>◯</span>Cercle</button>
+  <button class="tool" data-tool="midpoint"><span>⊙</span>Milieu</button>
+  <button class="tool" data-tool="perpendicular"><span>⊥</span>Perpendiculaire</button>
+  <button class="tool" data-tool="erase"><span>⌫</span>Supprimer</button>
+  <hr>
+  <label><input id="gridToggle" type="checkbox" checked> Afficher la grille</label>
+  <label><input id="labelsToggle" type="checkbox" checked> Étiquettes des points</label>
+  <div class="tip"><b>Conseil</b><p>Choisissez un outil puis cliquez dans la zone de dessin. Avec Sélection, faites glisser un point pour déplacer la figure.</p></div>
+</aside>
+<section class="drawing">
+  <div class="status"><span id="statusText">Prêt — sélectionnez un outil</span><span id="coordText">x : — · y : —</span></div>
+  <div class="canvas-wrap">
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg" aria-label="Zone de construction géométrique">
+      <defs><pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" class="grid-line"/></pattern></defs>
+      <rect width="100%" height="100%" fill="#fff"/><rect id="gridLayer" width="100%" height="100%" fill="url(#grid)"/>
+      <g id="axes"></g><g id="objects"></g><g id="points"></g><g id="preview"></g>
+    </svg>
+    <div id="emptyHint" class="empty"><strong>Votre construction commence ici</strong><p>Choisissez Point ou Segment dans la barre d'outils.</p></div>
+  </div>
+  <footer><span>GéoLab · Prototype 1.0</span><span>Exportez votre construction pour la conserver.</span></footer>
+</section>
+<aside class="properties">
+  <h2>PROPRIÉTÉS</h2><div id="propertiesContent" class="empty-props">Sélectionnez un point ou un objet pour consulter ses propriétés.</div>
+  <hr><h2>CONSTRUCTION</h2><div id="objectList" class="object-list">Aucun objet pour le moment.</div>
+  <button id="importBtn" class="import">Importer une construction JSON</button><input id="importFile" type="file" accept=".json,application/json" hidden>
+</aside>
 </main>
-
-<script>
-    const parametres = {
-        appName: "geometry",
-        width: 1200,
-        height: 700,
-        showToolBar: true,
-        showAlgebraInput: true,
-        showMenuBar: true,
-        showResetIcon: true,
-        enableLabelDrags: true,
-        enableShiftDragZoom: true,
-        showFullscreenButton: true,
-        language: "fr"
-    };
-
-    const applet = new GGBApplet(parametres, true);
-
-    window.addEventListener("load", function () {
-        applet.inject("ggb-element");
-    });
-</script>
-
-</body>
-</html>
+<script src="{% static 'app26/js/geometrie.js' %}"></script>
+</body></html>
