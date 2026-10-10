@@ -81,7 +81,7 @@ def calcul(request):
         "resultat_latex": resultat_latex,
         "erreur": erreur,
     })
-def geometrie(request):
+def geometrie():
     A = (1, 1)
     B = (5, 1)
     C = (3, 4)
