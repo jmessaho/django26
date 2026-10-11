@@ -17,11 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.contrib.auth import views
 from django.urls import path
-from app26.views import index, formations, recherches,prod
+from app26.views import index, formations, recherches,prod, geom
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', index),
     path('formations/', formations),
     path('recherches/', recherches),
     path("productions/", prod, name="prod"),
+path("geometrie/", geom, name="geom"),
 ]

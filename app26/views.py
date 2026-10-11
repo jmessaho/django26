@@ -21,3 +21,5 @@ def recherches(request):
     return render(request, 'recherches.html')
 def prod(request):
     return render(request, "proddidac.html")
+def geom(request):
+    return render(request, "geometrie.html")
