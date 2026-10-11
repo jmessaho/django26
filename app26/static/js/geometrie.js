@@ -50,13 +50,23 @@
     const r=svg.getBoundingClientRect(); W=Math.max(1,r.width); H=Math.max(1,r.height);
     svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
   }
-  function pos(ev) { const r=svg.getBoundingClientRect(); return {x:ev.clientX-r.left,y:ev.clientY-r.top}; }
+  function pos(ev) {
+    const pt=svg.createSVGPoint();
+    pt.x=ev.clientX; pt.y=ev.clientY;
+    const matrix=svg.getScreenCTM();
+    if(matrix) {
+      const p=pt.matrixTransform(matrix.inverse());
+      return {x:p.x,y:p.y};
+    }
+    const r=svg.getBoundingClientRect();
+    return {x:ev.clientX-r.left,y:ev.clientY-r.top};
+  }
   function snapshot() { history.push(JSON.stringify({points,objects,pointSeq,objectSeq})); if(history.length>80)history.shift(); }
   function restore(d) { points=d.points||[]; objects=d.objects||[]; pointSeq=d.pointSeq||points.length+1; objectSeq=d.objectSeq||objects.length+1; pending=[]; selected=null; render(); }
   function undo() { if(!history.length){say("Aucune action à annuler");return;} restore(JSON.parse(history.pop()));say("Action annulée"); }
   function createPoint(x,y,label) {
     const n=pointSeq++;
-    const p={id:`P${n}`,label:label||String.fromCharCode(65+((n-1)%26))+(n>26?Math.floor((n-1)/26)+1:""),x,y};
+    const p={id:`P${n}`,kind:"free",label:label||String.fromCharCode(65+((n-1)%26))+(n>26?Math.floor((n-1)/26)+1:""),x,y};
     points.push(p); return p;
   }
   function createObject(type, refs, extra={}) {
@@ -64,10 +74,11 @@
     objects.push(o);return o;
   }
 
-  // Resolves derived points/objects every render, so dependent constructions follow moved points.
+  // Resolves dependent points each time the canvas renders.
+  // Moving a free point therefore updates every object and derived point that depends on it.
   function resolvePoint(p, depth=0) {
     if (!p || depth>20) return null;
-    if (p.kind==="free") return p;
+    if (!p.kind || p.kind==="free") return p;
     const a=pById(p.parents?.[0]), b=pById(p.parents?.[1]);
     if(p.kind==="midpoint"&&a&&b) return {...p,x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     if(p.kind==="centralSymmetry"&&a&&b) return {...p,x:2*b.x-a.x,y:2*b.y-a.y};
@@ -179,7 +190,7 @@
       const g=svgEl("g",{"data-pid":raw.id});
       const c=svgEl("circle",{cx:p.x,cy:p.y,r:selected===raw.id?6:4.7,class:"geo-point"+(selected===raw.id?" selected":"")});
       c.addEventListener("pointerdown",ev=>{
-        if(tool==="select"&&! ["midpoint","intersection","centralSymmetry","axialSymmetry"].includes(raw.kind)){ev.stopPropagation();selected=raw.id;dragging=raw.id;dragStartSnapshot=JSON.stringify({points,objects,pointSeq,objectSeq});if(svg.setPointerCapture)svg.setPointerCapture(ev.pointerId);render();}
+        if(tool==="select"&&raw.kind==="free"){ev.stopPropagation();selected=raw.id;dragging=raw.id;dragStartSnapshot=JSON.stringify({points,objects,pointSeq,objectSeq});if(svg.setPointerCapture)svg.setPointerCapture(ev.pointerId);render();}
         else if(tool==="erase"){ev.stopPropagation();removePoint(raw.id);}
       });
       c.addEventListener("click",ev=>{ev.stopPropagation();if(!["select","erase"].includes(tool))handlePoint(raw);});
