@@ -7,6 +7,7 @@
   const objectsLayer = document.getElementById("objects");
   const pointsLayer = document.getElementById("points");
   const previewLayer = document.getElementById("preview");
+  const empty = document.getElementById("emptyHint");
   if (!svg || !objectsLayer || !pointsLayer) {
     console.error("GéoJM : canvas SVG introuvable. Vérifiez les identifiants de geometrie.html.");
     return;

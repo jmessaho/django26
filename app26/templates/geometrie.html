@@ -9,12 +9,21 @@
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="Accueil GéoJM"><span class="logo">G</span><span class="brand-text"><strong>GéoJM</strong><small>Géométrie dynamique</small></span></a>
+  <a class="brand" href="/" aria-label="Accueil GéoJM">
+    <span class="logo">G</span>
+    <span class="brand-text"><strong>GéoJM</strong><small>Géométrie dynamique</small></span>
+  </a>
   <nav class="menu" aria-label="Actions du document">
-    <button id="newBtn" type="button">Nouveau</button><button id="undoBtn" type="button">Annuler</button><button id="clearBtn" type="button">Tout effacer</button>
+    <button id="newBtn" type="button">Nouveau</button>
+    <button id="undoBtn" type="button">Annuler</button>
+    <button id="clearBtn" type="button">Tout effacer</button>
   </nav>
-  <div class="actions"><button id="saveBtn" class="primary" type="button">Enregistrer JSON</button><button id="exportBtn" type="button">Exporter SVG</button></div>
+  <div class="actions">
+    <button id="saveBtn" class="primary" type="button">Enregistrer JSON</button>
+    <button id="exportBtn" type="button">Exporter SVG</button>
+  </div>
 </header>
+
 <main class="workspace">
   <aside class="tools" aria-label="Outils de construction">
     <h2>CONSTRUCTIONS</h2>
@@ -24,6 +33,7 @@
     <button class="tool" data-tool="line" type="button"><span>↗</span><b>Droite</b><kbd>D</kbd></button>
     <button class="tool" data-tool="triangle" type="button"><span>△</span><b>Triangle</b><kbd>T</kbd></button>
     <button class="tool" data-tool="circle" type="button"><span>◯</span><b>Cercle</b><kbd>C</kbd></button>
+
     <div class="section-label">CONSTRUCTIONS AVANCÉES</div>
     <button class="tool" data-tool="midpoint" type="button"><span>⊙</span><b>Milieu</b></button>
     <button class="tool" data-tool="perpendicular" type="button"><span>⊥</span><b>Perpendiculaire</b></button>
@@ -31,28 +41,45 @@
     <button class="tool" data-tool="perpendicularBisector" type="button"><span>⊥</span><b>Médiatrice</b></button>
     <button class="tool" data-tool="bisector" type="button"><span>∠</span><b>Bissectrice</b></button>
     <button class="tool" data-tool="erase" type="button"><span>⌫</span><b>Supprimer</b><kbd>E</kbd></button>
+
     <hr>
     <label class="toggle"><input id="gridToggle" type="checkbox" checked> Afficher la grille</label>
     <label class="toggle"><input id="labelsToggle" type="checkbox" checked> Étiquettes des points</label>
-    <div class="tip"><strong>Comment utiliser les outils ?</strong><p>Point : cliquez dans la zone. Segment, droite, triangle et cercle : cliquez pour placer les points nécessaires.</p><p>Pour une construction avancée, sélectionnez les points existants dans l'ordre indiqué dans la barre d'état.</p></div>
+    <div class="tip">
+      <strong>Comment utiliser les outils ?</strong>
+      <p>Point : cliquez dans la zone. Segment, droite, triangle et cercle : cliquez dans la zone pour placer les points nécessaires.</p>
+      <p>Pour les constructions avancées, sélectionnez les points existants dans l'ordre indiqué dans la barre d'état.</p>
+    </div>
   </aside>
+
   <section class="drawing" aria-label="Zone de dessin">
     <div class="statusbar"><span class="status-dot"></span><span id="statusText">Prêt — sélectionnez un outil</span><span id="coordText" class="coords">x : — · y : —</span></div>
     <div class="canvas-wrap">
       <svg id="canvas" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan de construction géométrique">
-        <defs><pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" class="grid-line"/></pattern></defs>
-        <rect width="100%" height="100%" fill="#fff"/><rect id="gridLayer" width="100%" height="100%" fill="url(#grid)"/>
+        <defs>
+          <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+            <path d="M25 0H0V25" class="grid-line"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="#fff"/>
+        <rect id="gridLayer" width="100%" height="100%" fill="url(#grid)"/>
         <g id="axes"></g><g id="objects"></g><g id="points"></g><g id="preview"></g>
       </svg>
       <div id="emptyHint" class="empty-hint"><span>△</span><strong>Votre construction commence ici</strong><p>Choisissez un outil dans le panneau de gauche.</p></div>
     </div>
     <footer><span>GéoJM · Géométrie dynamique</span><span>Exportez vos constructions en JSON ou SVG.</span></footer>
   </section>
+
   <aside class="properties" aria-label="Propriétés et objets">
-    <h2>PROPRIÉTÉS</h2><div id="propertiesContent" class="empty-props">Sélectionnez un point ou un objet pour consulter ses propriétés.</div>
-    <hr><h2>CONSTRUCTION</h2><div id="objectList" class="object-list">Aucun objet pour le moment.</div>
-    <button id="importBtn" class="import-btn" type="button">Importer une construction JSON</button><input id="importFile" type="file" accept=".json,application/json" hidden>
+    <h2>PROPRIÉTÉS</h2>
+    <div id="propertiesContent" class="empty-props">Sélectionnez un point ou un objet pour consulter ses propriétés.</div>
+    <hr>
+    <h2>CONSTRUCTION</h2>
+    <div id="objectList" class="object-list">Aucun objet pour le moment.</div>
+    <button id="importBtn" class="import-btn" type="button">Importer une construction JSON</button>
+    <input id="importFile" type="file" accept=".json,application/json" hidden>
   </aside>
 </main>
 <script src="{% static 'app26/js/geometrie.js' %}" defer></script>
-</body></html>
+</body>
+</html>
