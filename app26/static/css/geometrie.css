@@ -67,3 +67,67 @@ footer{display:flex;justify-content:space-between;gap:10px;padding:26px 2px 0;co
 .import-btn:hover{background:#eef2ff;border-color:#b8c6ff}
 @media(max-width:1050px){.workspace{grid-template-columns:230px minmax(250px,1fr)}.properties{grid-column:1/-1;border-left:0;border-top:1px solid #e0e6f0}.properties .object-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.canvas-wrap{height:65vh}.brand{min-width:150px}}
 @media(max-width:700px){.topbar{height:auto;min-height:64px;padding:10px 12px;gap:8px;flex-wrap:wrap}.brand{min-width:0;flex:1}.menu{order:3;flex-basis:100%;justify-content:center}.actions{gap:2px}.topbar button{padding:8px 6px;font-size:11px}.workspace{display:flex;flex-direction:column}.tools{border-right:0;border-bottom:1px solid #e0e6f0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}.tools h2,.section-label,.tools hr,.tip{grid-column:1/-1}.tools h2{margin-bottom:4px}.tool{min-height:39px;padding:7px}.tool b{font-size:11px}.drawing{padding:0 10px 12px}.canvas-wrap{height:58vh;min-height:300px}.properties{border-left:0}.coords{display:none}footer{padding-top:14px;flex-wrap:wrap}}
+
+
+/* --- Adaptation responsive GéoJM --- */
+html, body { width:100%; max-width:100%; overflow-x:hidden; }
+.topbar { flex-wrap:wrap; }
+.workspace { width:100%; min-width:0; }
+.tools, .properties, .drawing { min-width:0; }
+.canvas-wrap { width:100%; min-width:0; }
+#canvas { width:100%; height:100%; }
+button, .tool, .object-item { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+#canvas { touch-action:none; }
+
+/* Tablettes et petits ordinateurs */
+@media (max-width: 1000px) {
+  .topbar { gap:12px; padding:10px 16px; height:auto; min-height:68px; }
+  .brand { min-width:150px; }
+  .workspace { grid-template-columns:220px minmax(0,1fr); }
+  .tools { padding:16px 10px; }
+  .properties { grid-column:1 / -1; border-left:0; border-top:1px solid #e0e6f0; }
+  .properties .object-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
+  .canvas-wrap { height:65vh; min-height:340px; }
+}
+
+/* Téléphones */
+@media (max-width: 640px) {
+  .topbar { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding:10px 12px; }
+  .brand { min-width:0; }
+  .menu { order:0; display:flex; justify-content:space-between; gap:4px; width:100%; }
+  .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; }
+  .topbar button { min-height:40px; padding:9px 7px; font-size:12px; }
+  .topbar .primary { padding:9px 7px; }
+  .workspace { display:flex; flex-direction:column; min-height:0; }
+  .tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding:12px; border-right:0; border-bottom:1px solid #e0e6f0; }
+  .tools h2, .section-label, .tools hr, .tip { grid-column:1 / -1; }
+  .tools h2 { margin:2px 4px 5px; }
+  .section-label { margin:8px 4px 2px; }
+  .tool { min-width:0; min-height:42px; padding:8px; gap:6px; }
+  .tool>span { width:18px; flex:0 0 18px; font-size:16px; }
+  .tool b { min-width:0; font-size:11px; line-height:1.2; overflow-wrap:anywhere; }
+  .tool kbd { font-size:10px; }
+  .tools hr { margin:7px 0; }
+  .toggle { margin:5px 2px; }
+  .tip { margin:8px 0 0; }
+  .drawing { padding:0 8px 12px; }
+  .statusbar { height:auto; min-height:38px; flex-wrap:wrap; white-space:normal; padding:5px 0; }
+  #statusText { flex:1; min-width:0; font-size:12px; }
+  .coords { display:none; }
+  .canvas-wrap { height:56vh; height:56dvh; min-height:280px; max-height:none; border-radius:8px; }
+  .empty-hint { width:90%; }
+  .empty-hint strong { font-size:13px; }
+  .empty-hint p { font-size:11px; }
+  footer { padding:12px 2px 0; flex-direction:column; gap:5px; }
+  .properties { padding:16px 12px; }
+  .properties .object-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .import-btn { min-height:42px; }
+}
+
+/* Très petits téléphones */
+@media (max-width: 360px) {
+  .tools { grid-template-columns:minmax(0,1fr); }
+  .actions { grid-template-columns:minmax(0,1fr); }
+  .properties .object-list { grid-template-columns:minmax(0,1fr); }
+  .canvas-wrap { min-height:250px; }
+}
