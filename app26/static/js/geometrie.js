@@ -29,7 +29,8 @@
   const labelType = t => ({
     segment:"Segment", line:"Droite", triangle:"Triangle", circle:"Cercle",
     midpoint:"Milieu", perpendicular:"Perpendiculaire", parallel:"Parallèle",
-    bisector:"Bissectrice", perpendicularBisector:"Médiatrice", intersection:"Intersection"
+    bisector:"Bissectrice", perpendicularBisector:"Médiatrice", intersection:"Intersection",
+    centralSymmetry:"Symétrie centrale", axialSymmetry:"Symétrie axiale"
   })[t] || t;
   const say = text => { const el = byId("statusText"); if (el) el.textContent = text; };
   const pById = id => points.find(p => p.id === id);
@@ -69,6 +70,18 @@
     if (p.kind==="free") return p;
     const a=pById(p.parents?.[0]), b=pById(p.parents?.[1]);
     if(p.kind==="midpoint"&&a&&b) return {...p,x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    if(p.kind==="centralSymmetry"&&a&&b) return {...p,x:2*b.x-a.x,y:2*b.y-a.y};
+    if(p.kind==="axialSymmetry"&&a&&b) {
+      const c=pById(p.parents?.[2]);
+      if(c) {
+        const vx=c.x-b.x, vy=c.y-b.y, den=vx*vx+vy*vy;
+        if(den>1e-9) {
+          const t=((a.x-b.x)*vx+(a.y-b.y)*vy)/den;
+          const px=b.x+t*vx, py=b.y+t*vy;
+          return {...p,x:2*px-a.x,y:2*py-a.y};
+        }
+      }
+    }
     if(p.kind==="intersection"&&a&&b) {
       const oa=oById(p.objectParents?.[0]), ob=oById(p.objectParents?.[1]);
       const l1=oa&&lineForObject(oa), l2=ob&&lineForObject(ob);
@@ -166,7 +179,7 @@
       const g=svgEl("g",{"data-pid":raw.id});
       const c=svgEl("circle",{cx:p.x,cy:p.y,r:selected===raw.id?6:4.7,class:"geo-point"+(selected===raw.id?" selected":"")});
       c.addEventListener("pointerdown",ev=>{
-        if(tool==="select"&&raw.kind!=="midpoint"&&raw.kind!=="intersection"){ev.stopPropagation();selected=raw.id;dragging=raw.id;dragStartSnapshot=JSON.stringify({points,objects,pointSeq,objectSeq});if(svg.setPointerCapture)svg.setPointerCapture(ev.pointerId);render();}
+        if(tool==="select"&&! ["midpoint","intersection","centralSymmetry","axialSymmetry"].includes(raw.kind)){ev.stopPropagation();selected=raw.id;dragging=raw.id;dragStartSnapshot=JSON.stringify({points,objects,pointSeq,objectSeq});if(svg.setPointerCapture)svg.setPointerCapture(ev.pointerId);render();}
         else if(tool==="erase"){ev.stopPropagation();removePoint(raw.id);}
       });
       c.addEventListener("click",ev=>{ev.stopPropagation();if(!["select","erase"].includes(tool))handlePoint(raw);});
@@ -181,6 +194,34 @@
   function removePoint(id){snapshot();points=points.filter(p=>p.id!==id);objects=objects.filter(o=>!o.refs.includes(id));selected=null;render();say("Point et objets associés supprimés");}
   function finish(type,ps){snapshot();const o=createObject(type,ps);pending=[];selected=o.id;render();say(labelType(type)+" créé");}
   function handlePoint(p) {
+    if(tool==="centralSymmetry") {
+      if(!pending.length) { pending=[p.id]; say("Point à transformer sélectionné : choisissez le centre de symétrie"); return; }
+      if(pending.length===1) {
+        if(p.id===pending[0]) return;
+        snapshot();
+        const original=pById(pending[0]);
+        const q=createPoint(2*p.x-original.x,2*p.y-original.y);
+        q.kind="centralSymmetry"; q.parents=[original.id,p.id]; q.label=original.label+"′";
+        selected=q.id; pending=[]; render(); say("Symétrique central créé"); return;
+      }
+    }
+    if(tool==="axialSymmetry") {
+      if(pending.includes(p.id)) return;
+      pending.push(p.id);
+      if(pending.length===1) { say("Choisissez le premier point de l'axe de symétrie"); return; }
+      if(pending.length===2) { say("Choisissez le deuxième point de l'axe de symétrie"); return; }
+      if(pending.length===3) {
+        const original=pById(pending[0]), a=pById(pending[1]), b=pById(pending[2]);
+        if(!original||!a||!b||dist(a,b)<1e-6) { pending=[]; say("Axe invalide : choisissez deux points distincts"); render(); return; }
+        snapshot();
+        const vx=b.x-a.x, vy=b.y-a.y, den=vx*vx+vy*vy;
+        const t=((original.x-a.x)*vx+(original.y-a.y)*vy)/den;
+        const px=a.x+t*vx, py=a.y+t*vy;
+        const q=createPoint(2*px-original.x,2*py-original.y);
+        q.kind="axialSymmetry"; q.parents=[original.id,a.id,b.id]; q.label=original.label+"′";
+        selected=q.id; pending=[]; render(); say("Symétrique axial créé"); return;
+      }
+    }
     if(tool==="midpoint"){
       if(!pending.length){pending=[p.id];say("Choisissez le deuxième point");return;}
       if(p.id!==pending[0])finish("midpoint",pending.map(pById).concat(p));return;
@@ -230,7 +271,10 @@
     select:"Sélectionnez ou déplacez un point",point:"Cliquez pour créer un point",
     segment:"Cliquez deux fois ou sélectionnez deux points",line:"Cliquez deux fois ou sélectionnez deux points",
     triangle:"Cliquez trois fois pour construire un triangle",circle:"Cliquez sur le centre puis sur le rayon",
-    midpoint:"Sélectionnez deux points existants",perpendicular:"Sélectionnez deux points de la droite puis le point de passage",
+    midpoint:"Sélectionnez deux points existants",
+    centralSymmetry:"Sélectionnez le point à transformer puis le centre de symétrie",
+    axialSymmetry:"Sélectionnez le point à transformer puis les deux points de l'axe",
+    perpendicular:"Sélectionnez deux points de la droite puis le point de passage",
     parallel:"Sélectionnez deux points de la droite puis le point de passage",
     perpendicularBisector:"Sélectionnez les deux extrémités du segment",bisector:"Sélectionnez trois points : côté, sommet, côté",
     erase:"Cliquez sur un objet à supprimer"
